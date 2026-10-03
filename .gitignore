@@ -1,0 +1,16 @@
+node_modules/
+artifacts/
+*.tgz
+.DS_Store
+.codex-dsh-bridge/
+projects/
+receipts/
+*.sock
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+coverage/
