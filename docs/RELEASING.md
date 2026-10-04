@@ -1,27 +1,32 @@
-# 上传 GitHub 前
+# 0.3.7 上传与升级说明
 
-此目录是独立源码包，采用 MIT 许可证。可将目录内容作为一个新 GitHub 仓库的根目录。
-不要把运行中的应用 profile、项目登记、聊天回执、日志或其他业务项目一起复制进来。
+本仓库采用 MIT。只上传源码仓库，不上传上一级工作目录、本机audit、已安装profile、通信状态或凭据。本文件不代表已提交、推送或创建Release；`private: true`防止误发npm，不影响GitHub开源。
 
-1. 运行 `npm test` 和 `npm run check:release`，应均退出 0。
-2. 检查 `git status --short`、`git diff --cached`，特别确认没有 `.env`、证书、密钥、本机目录或真实对话 ID。
-3. 如需安装包，使用 `npm pack --ignore-scripts --offline --pack-destination /absolute/private-output`，输出放在源码目录之外。
-4. 上传源码和 MIT LICENSE；不需要上传 `node_modules`、本机运行状态或历史安装包。
-5. GitHub Actions 只读权限，第三方动作固定提交；不使用 `pull_request_target`，不暴露仓库凭据给测试。
-6. Actions 上传后才会实际运行；本地 Mac 测试通过不代表已在 Linux/所有 Node 版本验证。
-7. 如需 npm 发布，请单独确认包名归属和发布权限，再移除 `private: true`；本流程不自动发布。
+## 发布前
 
-## 从 0.1 升级
+1. 运行 `npm test`、`npm run check:release`，核 `node bin/bridge.mjs help` 版本为0.3.7。平台跳过不计为通过，实际测试范围见 [验证记录](SECURITY-REVIEW.md)。
+2. 检查提交差异，包含新增源码、测试与文档；不包含本机路径、实际对话ID、回执、日志或秘密。
+3. 使用 `npm pack --offline --ignore-scripts --pack-destination /absolute/private-output` 生成固定包；核清单和SHA256，安装文件须匹配。已分发包不可用不同字节覆盖；实现变化另分配版本。
+4. GitHub Desktop 中审阅后提交并推送；如发Release，标签为 `v0.3.7`。注明Windows仍为预览，CLI新会话不保证侧栏显示，未验链路不能称通过。Actions只有上传后才运行。
 
-先让现有 DSH 工作到达安全暂停点并完整退出，再通过应用自带 CLI 安装本目录或安装包。
-不要一边运行旧 Host 一边只替换 CLI。重开后检查插件详情的版本应为 0.2.0。
-v0.1 项目登记使用旧 schema；以旧命令撤销旧登记或在新版 `unregister` 后重新 `register`。
-只撤销桥的项目登记，不删除应用项目、对话或回执目录。重新登记不会重发消息。
-不要经多个通道重复投递同一任务。
+源码门禁在完整Git仓库中运行；npm安装包按npm规则不含package-lock.json及部分仓库元数据，不能用安装包运行源码门禁并据此判发布失败。安装包单独核文件清单/哈希和安装行为。
 
-## 开源前必须知道的限制
+## 安装与升级
 
-安全审查是本次代码检查和回归验证，不是第三方认证，不保证没有未知漏洞。
-同用户恶意进程、操作系统或宿主应用失陷、目标代理误执行消息不属于本桥的隔离能力。
-真实发送会唤醒目标代理；仅在用户授权的测试对话做双向验通，不要拿活跃业务角色做探针。
-如果发布漏洞报告，提供最小合成复现，不在公开 issue 中贴凭据、聊天正文或个人路径。
+0.3.7 默认私有状态目录为当前用户目录下 `.codex-dsh-bridge`，正常打开DSH并启用插件即可，无需专用启动器或自定义环境变量。通信客户端保留在包内，用Node调用 `bin/bridge.mjs`；不自动生成外部命令快捷入口。
+
+已有其他状态目录时，先按 [启动与迁移说明](STARTUP.md) 保留并完整迁移数据。目标存在数据时先处理冲突；不得用重新登记或清空回执代替迁移，也不自动放宽权限。Mac默认位置未变。
+
+结束相关工作并正常退出DSH，按 [卸载说明](UNINSTALL.md) 卸载旧包、核清加载项，再安装新包。推荐由官方desktop profile管理：
+
+```sh
+dsh plugin --profile desktop add /absolute/path/dsh-plugin-codex-project-bridge-0.3.7.tgz --offline --ignore-scripts
+```
+
+图形界面安装见 [中文README](../README.md#方式一客户端添加插件) / [English README](../README.en.md)。安装源不是安装目标，不链接工作中的源码checkout；保留包管理器仍引用的安装包。GUI不等同于CLI的offline/ignore-scripts限制。
+
+重开后核插件详情和CLI均为0.3.7，并对已登记测试项目核只读状态。不要用业务角色作测试探针；不因安装更新而创建会话或开启完全权限。保留登记revision、权限策略、创建意图、去重及未知交付记录，安装不自动删除或迁移这些数据。
+
+DSH默认创建权限为inherit；显式full-access覆盖、单次 `--dsh-permission inherit` 及Codex按项目权限是独立配置，详见 [权限说明](PERMISSIONS.md) 与 [协作示例](WORKFLOW.md)。卸载或更新不撤销已有会话权限。
+
+源码回归、安装文件一致、普通启动及实际收信分别记录。公开问题报告只用最小合成复现，不贴凭据、聊天正文或个人路径。历史部署清理与回退材料保留在本机，不随公开包分发。

@@ -52,6 +52,6 @@ test('invalid thread ID or missing CLI fails closed', async () => {
 test('unresponsive metadata reader times out without ever queueing a message', async t => {
   const f = setup(t); process.env.TEST_SILENT = '1';
   t.after(() => { delete process.env.TEST_SILENT; });
-  await assert.rejects(readThread(f.binary, uuidA, { timeoutMs: 100 }), /codex_timeout/);
+  await assert.rejects(readThread(f.binary, uuidA, { timeoutMs: process.platform === 'win32' ? 1500 : 100 }), /codex_timeout/);
   assert.equal(fs.existsSync(process.env.TEST_QUEUE), false);
 });

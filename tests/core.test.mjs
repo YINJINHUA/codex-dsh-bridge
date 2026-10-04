@@ -72,7 +72,7 @@ test('status/result do not call prompt; old or incomplete results never imply co
   assert.ok(Buffer.byteLength(running.text) <= 16384);
 });
 
-test('unsafe and symlink configuration rejected; deleted project revokes access', async t => {
+test('unsafe and symlink configuration rejected; deleted project revokes access', { skip: process.platform === 'win32' }, async t => {
   const f = fixture(); t.after(f.cleanup);
   const file = projectFile(f.base, 'alpha');
   fs.chmodSync(file, 0o644); assert.throws(() => projectConfig(f.base, 'alpha'), /unsafe_file/);

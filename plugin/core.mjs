@@ -1,6 +1,11 @@
 import { projectConfig, validId, uuid, slug, claim, digest, finish } from '../lib/config.mjs';
+import { validateCreate } from '../lib/creation.mjs';
+import { createSession } from './create.mjs';
+import { validateCodex, handleCodex } from '../lib/codex-host.mjs';
 
 export function validate(req) {
+  if (req?.target === 'codex') return validateCodex(req);
+  if (req?.op === 'create') return validateCreate(req, { allowDshInherit: true });
   if (!req || Array.isArray(req) || typeof req !== 'object') throw Error('invalid_request');
   const allowed = ['op', 'id', 'project', 'session', 'revision', ...(req.op === 'send' ? ['text'] : [])];
   if (Object.keys(req).some(k => !allowed.includes(k))) throw Error('unknown_field');
@@ -38,7 +43,7 @@ export function summarize(records) {
     }
     if (e.type === 'turn/end') {
       latest.endSeq = e.seq;
-      latest.reason = typeof e.data.reason?.kind === 'string' ? e.data.reason.kind.slice(0, 64) : null;
+      latest.reason = typeof e.data?.reason?.kind === 'string' ? e.data.reason.kind.slice(0, 64) : null;
     }
   }
   return latest;
@@ -67,6 +72,8 @@ function boundedText(content) {
 
 export async function handle(ctx, req, base, signal) {
   validate(req);
+  if (req.target === 'codex') return handleCodex(req, base, signal);
+  if (req.op === 'create') return createSession(ctx, req, base, signal);
   const cfg = projectConfig(base, req.project);
   if (cfg.revision !== req.revision) throw Error('configuration_changed');
   await membership(ctx, cfg.roots, req.session);
@@ -75,7 +82,7 @@ export async function handle(ctx, req, base, signal) {
   if (req.op === 'send') return send(ctx, req, cfg, base, signal);
   const projection = await ctx.sessionController.projections({ sessionId: req.session }, signal);
   if (!projection) throw Error('session_not_found');
-  const agent = ctx.agents.get(req.session);
+  const agent = await ctx.agents.get(req.session);
   const value = { sessionId: req.session, membershipVerified: true, observedAt: new Date().toISOString(),
     asOfSeq: projection.asOfSeq, loaded: !!agent, runtimeStatus: String(agent?.status ?? 'not_loaded').slice(0, 64) };
   if (req.op === 'status') {
@@ -83,12 +90,14 @@ export async function handle(ctx, req, base, signal) {
     await membership(ctx, cfg.roots, req.session); signal?.throwIfAborted();
     return value;
   }
-  const page = await ctx.sessionController.page({ address: { kind: 'session', sessionId: req.session },
-    throughSeq: projection.asOfSeq, maxMessages: 8, turnWindow: { minMessages: 1, minTurns: 1 } }, signal);
+  const pageRequest = { address: { kind: 'session', sessionId: req.session },
+    throughSeq: projection.asOfSeq, maxMessages: 8, turnWindow: { minMessages: 1, minTurns: 1 } };
+  const page = ctx.bridgePage ? await ctx.bridgePage(pageRequest, signal) :
+    await ctx.sessionController.page(pageRequest, signal);
   if (projectConfig(base, req.project).revision !== cfg.revision) throw Error('configuration_changed');
   await membership(ctx, cfg.roots, req.session);
   signal?.throwIfAborted();
-  return { ...value, latestTurn: summarize(page.records), olderHistoryOmitted: page.hasMore };
+  return { ...value, latestTurn: ctx.bridgePage ? page.latestTurn : summarize(page.records), olderHistoryOmitted: page.hasMore };
 }
 
 async function send(ctx, req, cfg, base, signal) {

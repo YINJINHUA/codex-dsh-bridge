@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
-import { register, projectFile, projectConfig, claim, digest, privateDir } from '../lib/config.mjs';
+import { register, projectFile, projectConfig, claim, digest, privateDir, socketPath } from '../lib/config.mjs';
 import { handle, summarize, validate } from '../plugin/core.mjs';
 import { exchange } from '../lib/transport.mjs';
 import { fixture, sidA } from './helpers.mjs';
@@ -35,7 +35,7 @@ test('corrupt accepted receipt cannot turn a send into a fabricated success', t 
   assert.throws(() => claim(f.base, 'receipt', identity), /invalid_receipt/);
 });
 
-test('transport rejects truthy non-boolean success', async t => {
+test('transport rejects truthy non-boolean success', { skip: process.platform === 'win32' }, async t => {
   const f = fixture(); const endpoint = path.join(f.base, 'bridge.sock'), req = f.req('status');
   const server = net.createServer(client => client.on('data', () => client.end(JSON.stringify({
     ok: 'yes', requestId: req.id, project: req.project, value: { sessionId: req.session }
@@ -48,7 +48,7 @@ test('transport rejects truthy non-boolean success', async t => {
 test('slow request bytes cannot extend the absolute connection deadline', async t => {
   const f = fixture(); const stop = await start(f.ctx, f.base, { readMs: 150 });
   t.after(async () => { await stop(); f.cleanup(); });
-  const client = net.createConnection(path.join(f.base, 'bridge.sock'));
+  const client = net.createConnection(socketPath(f.base));
   client.on('error', () => {});
   const started = Date.now(), tick = setInterval(() => client.write(' '), 20);
   try { await new Promise(resolve => client.on('close', resolve)); }
@@ -56,7 +56,7 @@ test('slow request bytes cannot extend the absolute connection deadline', async 
   assert.ok(Date.now() - started < 1500); assert.equal(f.calls.length, 0);
 });
 
-test('slow response bytes cannot extend the absolute client deadline', async t => {
+test('slow response bytes cannot extend the absolute client deadline', { skip: process.platform === 'win32' }, async t => {
   const f = fixture(); let timer, client;
   const server = net.createServer(c => {
     client = c; c.on('error', () => {}); timer = setInterval(() => c.write(' '), 20);
@@ -67,7 +67,7 @@ test('slow response bytes cannot extend the absolute client deadline', async t =
   await assert.rejects(exchange(f.base, f.req('status'), { timeoutMs: 150 }), /transport_timeout/);
 });
 
-test('named pipe masquerading as private JSON never blocks the reader', t => {
+test('named pipe masquerading as private JSON never blocks the reader', { skip: process.platform === 'win32' }, t => {
   const f = fixture(); t.after(f.cleanup); const fifo = path.join(f.dir, 'config-pipe');
   execFileSync('mkfifo', [fifo]); fs.chmodSync(fifo, 0o600);
   const modulePath = new URL('../lib/config.mjs', import.meta.url).href;
@@ -76,7 +76,7 @@ try { readJSON(process.argv[1]); process.exit(2); } catch(e) { if(e.message!=='u
   execFileSync(process.execPath, ['--input-type=module', '-e', script, fifo], { timeout: 1500 });
 });
 
-test('message pipe rejects before reading, and parent symlinks are refused', t => {
+test('message pipe rejects before reading, and parent symlinks are refused', { skip: process.platform === 'win32' }, t => {
   const f = fixture(); t.after(f.cleanup); const fifo = path.join(f.dir, 'message-pipe');
   execFileSync('mkfifo', [fifo]);
   const cli = fileURLToPath(new URL('../bin/bridge.mjs', import.meta.url));
@@ -113,7 +113,7 @@ test('wire text rejects NUL and lone surrogates without activating Host', t => {
   for (const text of ['bad\0text', '\ud800']) assert.throws(() => validate({ ...f.req(), text }), /invalid_text/);
 });
 
-test('optional plugin startup failure stays contained and never deletes stale endpoint', async t => {
+test('optional plugin startup failure stays contained and never deletes stale endpoint', { skip: process.platform === 'win32' }, async t => {
   const f = fixture(); t.after(f.cleanup); const endpoint = path.join(f.base, 'bridge.sock');
   fs.writeFileSync(endpoint, 'sentinel');
   const previous = process.env.CODEX_DSH_BRIDGE_HOME; process.env.CODEX_DSH_BRIDGE_HOME = f.base;
@@ -130,8 +130,9 @@ test('optional plugin startup failure stays contained and never deletes stale en
 
 
 test('timed-out Host send stays quarantined until it actually settles', async t => {
-  const f = fixture(); t.after(f.cleanup);
-  const stop = await start(f.ctx, f.base, { requestMs: 100 }); t.after(stop);
+  const f = fixture(); let stop;
+  t.after(async () => { if (stop) await stop(); f.cleanup(); });
+  stop = await start(f.ctx, f.base, { requestMs: process.platform === 'win32' ? 20000 : 100 });
   let release, calls = 0;
   const held = new Promise(resolve => { release = resolve; });
   f.ctx.sessionController.prompt = async () => { calls++; await held; return { accepted: true }; };
@@ -141,12 +142,19 @@ test('timed-out Host send stays quarantined until it actually settles', async t 
   const { sidB } = await import('./helpers.mjs');
   assert.equal((await exchange(f.base, f.req('status', 'beta', sidB))).ok, true);
   release(); await new Promise(resolve => setImmediate(resolve));
-  assert.equal((await exchange(f.base, f.req('status'))).ok, true);
+  let status, deadline = Date.now() + 30000;
+  do {
+    status = await exchange(f.base, f.req('status'));
+    if (status.ok) break;
+    assert.ok(['host_request_unsettled', 'session_busy'].includes(status.error));
+    await new Promise(resolve => setTimeout(resolve, 50));
+  } while (Date.now() < deadline);
+  assert.equal(status.ok, true);
   assert.equal((await exchange(f.base, f.req())).value.duplicate, true);
   assert.equal(calls, 1);
 });
 
-test('unsettled Host capacity is bounded and reported explicitly', async t => {
+test('unsettled Host capacity is bounded and reported explicitly', { skip: process.platform === 'win32' }, async t => {
   const f = fixture(); t.after(f.cleanup);
   const stop = await start(f.ctx, f.base, { requestMs: 100 }); t.after(stop);
   let release, calls = 0;

@@ -1,17 +1,30 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { register, projectConfig } from '../lib/config.mjs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+import { register, projectConfig, privateDir } from '../lib/config.mjs';
 
 export const uuidA = '00000000-0000-4000-8000-000000000001';
 export const uuidB = '00000000-0000-4000-8000-000000000002';
 export const sidA = 'session-' + uuidA, sidB = 'session-' + uuidB;
+export function windowsScript(script, input) {
+  const result = spawnSync(path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')],
+    { input: JSON.stringify(input), encoding: 'utf8', timeout: 30000, windowsHide: true,
+      env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'psmodulepath')),
+        PSModulePath: path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'Modules') } });
+  if (result.error || result.status !== 0) throw Error('test_windows_helper_failed');
+  return result.stdout;
+}
 export function fixture() {
-  const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'bridge-'));
+  const dir = process.platform === 'win32' ? privateDir(path.join(fs.realpathSync.native(os.tmpdir()), 'bridge-' + randomUUID())) :
+    fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'bridge-'));
   fs.chmodSync(dir, 0o700);
   const base = path.join(dir, 'state');
-  const a = fs.mkdirSync(path.join(dir, 'alpha'), { recursive: true });
-  const b = fs.mkdirSync(path.join(dir, 'beta'), { recursive: true });
+  const a = path.join(dir, 'alpha'), b = path.join(dir, 'beta');
+  fs.mkdirSync(a, { recursive: true }); fs.mkdirSync(b, { recursive: true });
   register(base, 'alpha', [a]); register(base, 'beta', [b]);
   const calls = [], members = new Map([[a, [sidA]], [b, [sidB]]]);
   const ctx = {
@@ -31,6 +44,15 @@ export function fixture() {
 }
 
 export function fakeCodex(f) {
+  if (process.platform === 'win32') {
+    const output = path.join(f.dir, 'fake-codex.exe');
+    const source = fileURLToPath(new URL('./fake-codex.cs', import.meta.url));
+    const script = `[Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
+$r = [Console]::In.ReadToEnd() | ConvertFrom-Json
+Add-Type -Path $r.source -OutputAssembly $r.output -OutputType ConsoleApplication -ReferencedAssemblies System.Web.Extensions -ErrorAction Stop`;
+    windowsScript(script, { source, output });
+    return output;
+  }
   const file = path.join(f.dir, 'fake-codex.mjs');
   fs.writeFileSync(file, `#!/usr/bin/env node
 import fs from 'node:fs';
@@ -42,10 +64,12 @@ if (process.argv[2] === 'queue') {
 if (process.env.TEST_SILENT) { setTimeout(()=>process.exit(0), 20000); }
 else {
 const rl=readline.createInterface({input:process.stdin});
+let name = null;
 rl.on('line',line=>{
   const m=JSON.parse(line);
   if(m.id===1) console.log(JSON.stringify({id:1,result:{userAgent:'test'}}));
-  if(m.id===2) console.log(JSON.stringify({id:2,result:{thread:{id:m.params.threadId,cwd:process.env.TEST_ROOT,status:{type:'notLoaded'}}}}));
+  if(m.id===2 || m.id===4) console.log(JSON.stringify({id:m.id,result:{thread:{id:m.params.threadId,cwd:process.env.TEST_ROOT,name,source:'exec',status:{type:'notLoaded'}}}}));
+  if(m.id===3) { name=m.params.name; console.log(JSON.stringify({id:3,result:{}})); }
 });
 }
 `);

@@ -2,17 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { privatePatterns as patterns } from './release-rules.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const allowed = new Set(['.github', '.gitignore', 'bin', 'docs', 'lib', 'locale', 'plugin', 'scripts', 'tests',
-  'CHANGELOG.md', 'LICENSE', 'README.md', 'SECURITY.md', 'package.json', 'package-lock.json', 'cordis.patch.yml']);
-const patterns = [
-  /\/(?:Users|home)\/[a-zA-Z0-9_.-]+\//,
-  /\/Volumes\/[^\s"'`]+/,
-  /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/,
-  /\b(?:sk-[a-zA-Z0-9]{20,}|gh[pousr]_[a-zA-Z0-9]{20,})\b/,
-  /(?:api[_-]?key|password|secret)\s*[:=]\s*["'][a-zA-Z0-9+/_=-]{16,}["']/i
-];
+  'CHANGELOG.md', 'LICENSE', 'README.md', 'README.en.md', 'SECURITY.md', 'package.json', 'package-lock.json', 'cordis.patch.yml']);
 let count = 0;
 function inspect(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -35,12 +29,28 @@ function inspect(dir) {
 inspect(root);
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 assert.equal(manifest.license, 'MIT');
+assert.equal(manifest.bin, undefined, 'external CLI shims are not part of the plugin package');
+const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+assert.equal(lock.version, manifest.version, 'lock version mismatch');
+assert.equal(lock.packages[''].version, manifest.version, 'lock root version mismatch');
+const versionPatterns = {
+  'bin/bridge.mjs': /项目通信桥 (\d+\.\d+\.\d+)/,
+  'lib/codex.mjs': /version: '([^']+)'/,
+  'README.md': /^版本 ([^ ]+)/m,
+  'README.en.md': /^Version ([^ ]+)/m,
+  'docs/RELEASING.md': /^# (\d+\.\d+\.\d+)/m,
+  'CHANGELOG.md': /^## (\d+\.\d+\.\d+)/m
+};
+for (const [name, pattern] of Object.entries(versionPatterns)) {
+  assert.equal(fs.readFileSync(path.join(root, name), 'utf8').match(pattern)?.[1], manifest.version, 'version mismatch: ' + name);
+}
+
 for (const kind of ['dependencies', 'optionalDependencies', 'devDependencies']) {
   assert.equal(Object.keys(manifest[kind] || {}).length, 0, 'unexpected third-party dependency');
 }
 for (const name of ['preinstall', 'install', 'postinstall', 'prepare']) assert.ok(!manifest.scripts?.[name]);
 assert.equal(manifest.private, true, 'npm publishing remains explicitly disabled');
-for (const name of ['README.md', 'LICENSE', 'SECURITY.md', 'docs/ARCHITECTURE.md', 'docs/SECURITY-REVIEW.md']) {
+for (const name of ['README.md', 'README.en.md', 'LICENSE', 'SECURITY.md', 'docs/ARCHITECTURE.md', 'docs/SECURITY-REVIEW.md']) {
   assert.ok(fs.statSync(path.join(root, name)).isFile(), 'required public documentation missing');
 }
 console.log(JSON.stringify({ ok: true, filesChecked: count, thirdPartyDependencies: 0,

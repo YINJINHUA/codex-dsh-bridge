@@ -1,26 +1,31 @@
-# Changelog
+# 更新记录
 
-## 0.2.1 — 2026-10-04
+## 0.3.7 — 相对已发布的 0.2.1（待发布）
 
-- 明确区分超时未落地的宿主请求与普通忙碌，保留锁以避免重叠发送。
-- socket 绑定期间同步收紧并恢复 umask，消除 chmod 前的宽松权限。
-- CLI 与 socket 统一返回 unknown_project，内部错误仍保持脱敏。
-- 补充对端身份、挂起恢复、回执清理边界及回归验证。
+本条合并上次发布后的全部开发改动；中间开发包不作为独立公开版本列出。
 
-## 0.2.0 — 2026-10-04
+### 功能与平台
 
-- Add MIT license, communication architecture, threat model and upload checklist.
-- Reject stale requests after project re-registration or directory replacement.
-- Recheck registration after asynchronous membership reads; corrupt receipts fail closed.
-- Apply absolute connection deadlines and terminate owned unresponsive CLI children.
-- Refuse named pipes, symlink state ancestors, invalid Unicode and unsafe executables.
-- Bound DSH summaries and transport responses; reject malformed success envelopes.
-- Flush receipt directory updates and avoid stale temporary-file collisions.
-- Keep optional bridge startup failure from taking down the DSH Host.
-- Add regression tests and pinned, read-only GitHub Actions checks.
+- 新增 Windows 预览：私有 NTFS 状态目录、认证加密命名管道和后台 Worker；macOS 继续使用本机 Unix socket。
+- Codex 默认经 DSH Host 调用已配置的官方 CLI，保留显式 direct 路线；失败不自动切换或提权。
+- 支持显式创建 DSH/Codex 对话、核验项目与命名，持久保存已知 ID，交付不明不自动重建。
+- 提供 DSH 新会话 inherit/full-access 本机策略及单次 `--dsh-permission inherit`；Codex 创建权限按项目设置。现有策略范围不变，本版未收窄 DSH 全局覆盖。
 
-## 0.1.0 — initial local version
+### 安全与稳定性
 
-- Project-based routing without individual conversation registration.
-- Unix socket DSH adapter; Codex read-only metadata and queue adapters.
-- Chinese/English plugin descriptions; no third-party runtime dependencies.
+- 新登记和已有登记统一拒绝工作区与桥状态目录重叠，覆盖读、发信和创建路径；不给新 Codex 会话额外授予桥状态写权限。
+- macOS 检查状态目录、状态文件及祖先 ACL，拒绝 Allow/未知条目；POSIX 祖先须属于当前用户或 root。不会自动删除 ACL 或放宽权限。
+- POSIX 首次回执通过独占发布锁和原子重命名提交完整文件；竞争请求明确返回忙状态，保留硬链接检查、去重及未知交付记录。
+- 有界文件读取正确处理短读；权限策略、消息和回执严格校验；补齐错误码及连接异常隔离。
+- Windows 复用系统 PowerShell 模块，完善程序完整性、路径/ACL检查、私有测试目录与平台回归入口。
+
+### 安装与说明
+
+- 正常启动 DSH，由插件开关控制服务；无需专用应用启动脚本或自定义环境变量。各平台默认状态位于用户目录的 `.codex-dsh-bridge`。
+- 使用官方 desktop profile 安装；CLI 保留在包内，不生成外部快捷入口。更新/卸载保留项目登记和通信状态，不自动迁移数据。
+- 中英文 README 与插件说明精简；增加完整命令、权限、五对话协作、安装/卸载和平台指南；明确DSH内部3/4/5直接通信另需插件。
+- 扩充发布检查和固定 Action 版本的跨平台 CI；验证结果见 [验证与限制](docs/SECURITY-REVIEW.md)。
+
+### 已知限制
+
+CLI 创建的 Codex 对话不保证侧栏可见；Windows 纯 CLI 创建仍可能在实际创建/回信后返回结果不明，不能视为完整通过。日常应由已有 Codex 对话通过桌面原生能力创建新对话。DSH 完全权限覆盖仍作用于同一桥状态目录下所有已登记项目，须明确启用。Linux 未完成本次实机验收；本桥不提供同用户进程之间的安全隔离。

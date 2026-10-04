@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-test('socket is private before chmod and listen restores the Host umask immediately', async () => {
+test('socket is private before chmod and listen restores the Host umask immediately', { skip: process.platform === 'win32' }, async () => {
   const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'sockmode-'));
   try {
     fs.chmodSync(dir, 0o700);
@@ -34,7 +34,7 @@ test('socket is private before chmod and listen restores the Host umask immediat
 });
 
 
-test('failed socket binding restores the Host umask on both error paths', async () => {
+test('failed socket binding restores the Host umask on both error paths', { skip: process.platform === 'win32' }, async () => {
   const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'sockfail-'));
   try {
     fs.chmodSync(dir, 0o700);

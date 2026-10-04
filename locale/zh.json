@@ -1,4 +1,6 @@
-{ "meta": {
-  "title": "Codex ↔ DSH 项目通信桥",
-  "description": "让 Codex 与 DeepSeek Harness 的现有对话通过本机命令行互相发消息。只登记项目，不逐个登记对话；发送前核对目标所属项目。通信方式：私有 Unix socket 连接 DSH Host 会话接口；返回 Codex 用官方 CLI，stdio JSON-RPC 只读核验后由 queue 投递。支持发消息、查状态和读取 DSH 最近答复，不使用模拟点击，不需要 API Key。入队不等于任务完成，不自动重发，不改变项目权限。运行 node bin/bridge.mjs help 查看命令，完整说明见 README.md。"
-} }
+{
+  "meta": {
+    "title": "Codex ↔ DSH 项目通信桥",
+    "description": "让 Codex 与 DSH 在本机互发消息、查询进度和创建对话。只需登记项目，无需逐个登记对话；通过本机接口与官方 Codex CLI 通信，无云中转。\n\n正常打开 DSH 并启用插件即可，无需专用启动器。首次使用须配置 Codex 路径并登记项目，步骤见 README.md。\n\n新建 DSH 对话默认跟随软件权限设置；完全权限须在本机显式配置。新建 Codex 对话建议交给已有 Codex 对话执行，纯 CLI 创建不保证侧栏可见。完整权限与协作示例见 docs/。\nDSH原生内部协作及低权限对话主动回报需另配插件。"
+  }
+}

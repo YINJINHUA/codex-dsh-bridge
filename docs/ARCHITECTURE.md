@@ -1,5 +1,7 @@
 # 通信方式与信任边界
 
+以下 Unix 路径和模式位适用于 macOS/Linux。Windows 预览改用命名管道、私有 ACL 与带认证加密的帧；服务端文件检查运行在 Worker，Host 会话调用经进程内消息传递，详见 [Windows 说明](WINDOWS.md)。它不连接远端 Windows/Mac 的会话，也不共享两台机器的状态。
+
 ## 两个方向使用不同机制
 
 ### Codex → DSH
@@ -12,13 +14,13 @@
 6. Host 返回 accepted 后回写回执；只表示接收入队，不表示代理已完成。
 
 DSH 状态查询调用 `projections` 和已加载代理状态；最近结果调用有限窗口的 `page`。
-插件不直接读取 DSH 会话数据库，不创建新会话，也不使用桌面点击来发消息。
+插件不直接读取 DSH 会话数据库，只有显式 create 才创建新会话，不使用桌面点击来发消息。
 所有连接有绝对截止时间；每连接一个请求，最多 32 个连接、16 个未结束请求；同目标请求串行。
 
 ### DSH → Codex
 
 1. DSH 代理在用户授权范围内调用同一 CLI，指定 `--to codex` 和目标 Codex UUID。
-2. CLI 启动一个短暂的 `codex app-server --stdio` 元数据读取进程。
+2. 默认 CLI 将结构化请求交给 DSH Host，由 Host 从私有 codex-runtime.json 取已配置的可信 CLI，启动短暂的 `codex app-server --stdio` 元数据读取进程。请求不能指定二进制、argv、环境或权限。显式 `--via direct` 才由调用者启动。
 3. 通过标准输入/输出的 JSON-RPC 只发送 `initialize`、`initialized`、`thread/read(includeTurns:false)`。
 4. 返回的目标工作目录须与登记的一个根目录精确匹配，再核登记仍有效。
 5. 持久保存意图后，以参数数组调用 `codex queue --thread UUID --message TEXT`，无 shell 拼接。
@@ -50,5 +52,19 @@ DSH 状态查询调用 `projections` 和已加载代理状态；最近结果调�
 能以该用户运行程序的人本来就可能调用 Codex/DSH 原生接口；同用户可修改登记配置。
 入站文本包含“代理消息，非用户新授权”标记；接收者仍须遵守用户授权，不把代理消息当新的用户批准。
 
-无 TCP/HTTP 服务、无安装脚本、无第三方 npm 运行时依赖、无自动启动/轮询/重发。
+无 TCP/HTTP 服务、无安装脚本、无第三方 npm 运行时依赖、不负责启动目标应用、自动轮询或自动重发；桥端点随 DSH 插件启用而启动。
 本桥无独立模型客户端，但正常投递可能唤醒目标代理并消耗目标原有额度。
+
+## 显式创建与桌面显示
+
+日常协作规则为 DSH 的 B 直接给已有 Codex A 发信；需要新 Codex 对话时，由已有 A 使用桌面端原生能力创建 C 并核验可见性。A/B/C 是文档示例，不是协议中的固定角色，也没有新增自动协调服务。
+
+桥保留 B 通过纯 CLI 创建 C 的入口，仅用于用户明确要求的测试或高级用法；日常由已有 A 创建是文档协作规则，不是桥协议自动改道。默认 DSH Host 调用官方 Codex CLI 与显式 direct 路线都不依赖 UI；两者均不能承诺 `exec` 会话自动进入桌面侧栏。选择何种协作方式由用户及项目流程决定，不根据错误自动切换。
+
+create 单独保存意图与创建阶段，已知 ID 立即写入 creations；失败不自动重建。DSH 在当前 Host 的已登记项目中创建、命名；若本机显式启用新建完全权限策略，通过 permissionPresets 服务仅设置该新会话，并读回 danger-full-access / never，再投递首条提示。默认 inherit 不覆盖权限；单次 DSH 创建可携带 dshPermission: inherit（CLI 为 --dsh-permission inherit），即使桥配置 full-access 也跳过覆盖，由 DSH 使用通用新会话默认值。该字段纳入请求指纹，同编号不能修改。接口缺失、读回不符或创建中策略撤回时，保留已创建 ID 并停止首条任务，不自动重建。
+
+Codex 使用官方 exec（默认 workspace-write，或本机显式启用的项目 full-access 策略；不附加桥状态目录写授权，仍拒绝两目录重叠），首轮完成后核项目，再用官方 thread/name/set 命名并读回验证。标题失败单独报告，不把已创建会话伪装成未创建。Codex 策略保存在私有 codex-creation-policies 中，绑定项目登记 revision；创建意图记录策略快照，执行前后核撤回。回执中的权限是启动参数记录，并非实际权限独立读回。五对话建议见 [协作示例](WORKFLOW.md)。
+
+exec 来源不保证被桌面默认列表展示。回执提供真实 ID、titleApplied、desktopVisibility 和终端 resumeCommand。桥不改 source 或内部数据库；桌面打开由用户或 Codex 的应用工具完成。
+
+首次配置、宿主权限与每项实际读写见 [权限与操作说明](PERMISSIONS.md)。宿主路线与直接路线共享回执键，不用换路线或换编号绕过未知交付。

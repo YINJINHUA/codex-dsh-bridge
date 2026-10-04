@@ -1,4 +1,6 @@
-{ "meta": {
-  "title": "Codex ↔ DSH Project Bridge",
-  "description": "Local messaging between Codex and DeepSeek Harness. Register projects, not individual conversations. A private Unix socket calls DSH Host session APIs; the reverse direction uses the official Codex CLI: stdio JSON-RPC for read-only project checks, then queue for delivery. Supports messages, status and recent DSH results without UI automation or API keys. Queued does not mean completed. No automatic retries or changes to project permissions. Run node bin/bridge.mjs help; full usage is in README.md."
-} }
+{
+  "meta": {
+    "title": "Codex ↔ DSH Project Bridge",
+    "description": "Local messaging, status queries and conversation creation between Codex and DSH. Register projects, not individual conversations. Uses local interfaces and the official Codex CLI; no cloud relay.\n\nOpen DSH normally and enable the plugin; no dedicated launcher is needed. Configure the Codex path and register a project before first use. See README.en.md.\n\nNew DSH conversations follow the app permission defaults unless full access is explicitly configured locally. Ask an existing Codex conversation to create new Codex work; CLI creation does not guarantee sidebar visibility. Permissions and workflow guides are in docs/.\nNative internal coordination and low-permission worker callbacks in DSH require a separate plugin."
+  }
+}

@@ -5,7 +5,10 @@ artifacts/
 .codex-dsh-bridge/
 projects/
 receipts/
+creations/
+codex-runtime.json
 *.sock
+channel-key.json
 .env
 .env.*
 *.pem
@@ -14,3 +17,6 @@ receipts/
 *.pfx
 *.log
 coverage/
+dsh-creation-policy.json
+audit/
+codex-creation-policies/
