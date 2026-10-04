@@ -7,7 +7,7 @@ import { queueOnce, resolveBinary } from '../lib/process.mjs';
 import { readThread } from '../lib/codex.mjs';
 import { start } from '../plugin/index.mjs';
 import { exchange } from '../lib/transport.mjs';
-import { privateDir, projectConfig, readJSON, writeNew, socketPath } from '../lib/config.mjs';
+import { privateDir, projectConfig, readJSON, writeNew, replaceJSON, socketPath } from '../lib/config.mjs';
 import { windowsSecurity } from '../lib/windows.mjs';
 
 const native = { skip: process.platform !== 'win32', timeout: 180000 };
@@ -31,11 +31,12 @@ test('Windows rejects readable state, writable executable and reparse-point stat
   assert.equal(resolveBinary(executable), executable);
   const script = `$ErrorActionPreference = 'Stop'
 $r = [Console]::In.ReadToEnd() | ConvertFrom-Json
-$acl = Get-Acl -LiteralPath $r.path
+# Modify only the DACL; do not request audit/owner writes through Set-Acl.
+$acl = [IO.File]::GetAccessControl($r.path, [Security.AccessControl.AccessControlSections]::Access)
 $sid = New-Object Security.Principal.SecurityIdentifier('S-1-1-0')
 $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, $r.rights, 'Allow')
 $acl.AddAccessRule($rule)
-Set-Acl -LiteralPath $r.path -AclObject $acl`;
+[IO.File]::SetAccessControl($r.path, $acl)`;
   windowsScript(script, { path: file, rights: 'Read' });
   assert.throws(() => readJSON(file), /unsafe_file/);
   windowsScript(script, { path: executable, rights: 'Write' });
@@ -70,6 +71,15 @@ test('Windows state is private and atomic claim never overwrites an existing rec
   writeNew(file, { first: true });
   assert.throws(() => writeNew(file, { second: true }), e => e.code === 'EEXIST');
   assert.deepEqual(readJSON(file), { first: true });
+  const ownerCheck = `$r = [Console]::In.ReadToEnd() | ConvertFrom-Json
+$acl = Get-Acl -LiteralPath $r.path
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+@{ownerIsCurrentUser=($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -eq $sid.Value);privateDacl=$acl.AreAccessRulesProtected} | ConvertTo-Json -Compress`;
+  const expected = { ownerIsCurrentUser: true, privateDacl: true };
+  assert.deepEqual(JSON.parse(windowsScript(ownerCheck, { path: file })), expected);
+  replaceJSON(file, { replaced: true });
+  assert.deepEqual(readJSON(file), { replaced: true });
+  assert.deepEqual(JSON.parse(windowsScript(ownerCheck, { path: file })), expected);
   assert.equal(projectConfig(f.base, 'alpha').roots[0], fs.realpathSync.native(f.a));
   assert.throws(() => privateDir('\\\\invalid-server\\share\\state'), /local_ntfs_required/);
 });

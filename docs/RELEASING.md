@@ -6,8 +6,8 @@
 
 1. 运行 `npm test`、`npm run check:release`，核 `node bin/bridge.mjs help` 版本为0.3.7。平台跳过不计为通过，实际测试范围见 [验证记录](SECURITY-REVIEW.md)。
 2. 检查提交差异，包含新增源码、测试与文档；不包含本机路径、实际对话ID、回执、日志或秘密。
-3. 使用 `npm pack --offline --ignore-scripts --pack-destination /absolute/private-output` 生成固定包；核清单和SHA256，安装文件须匹配。已分发包不可用不同字节覆盖；实现变化另分配版本。
-4. GitHub Desktop 中审阅后提交并推送；如发Release，标签为 `v0.3.7`。注明Windows仍为预览，CLI新会话不保证侧栏显示，未验链路不能称通过。Actions只有上传后才运行。
+3. 使用 `npm pack --offline --ignore-scripts --pack-destination /absolute/private-output` 生成固定包；核清单和SHA256，安装文件须匹配。已正式分发包不可用不同字节覆盖；实现变化另分配版本。未发布草稿修补后须在新输出目录重新打包，保留旧包证据，并同时替换草稿安装包和校验文件。
+4. GitHub Desktop 中审阅后提交并推送；如发Release，标签为 `v0.3.7`。等待该提交的Actions检查通过，再核标签、源码和附件一致后发布。检查失败保持草稿，不用旧提交的成功结果替代。注明Windows仍为预览，CLI新会话不保证侧栏显示，未验链路不能称通过。
 
 源码门禁在完整Git仓库中运行；npm安装包按npm规则不含package-lock.json及部分仓库元数据，不能用安装包运行源码门禁并据此判发布失败。安装包单独核文件清单/哈希和安装行为。
 

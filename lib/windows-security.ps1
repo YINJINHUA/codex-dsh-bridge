@@ -92,11 +92,32 @@ try {
       Private-ACL ([IO.Path]::GetDirectoryName($target)) $true
       Private-ACL ([IO.Path]::GetDirectoryName([string]$request.destination)) $true
       Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class BridgeMove { [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool MoveFileEx(string from, string to, uint flags); }'
-      $flags = 8; if ($request.replace -eq $true) { $flags = 9 }
-      if (-not [BridgeMove]::MoveFileEx($target, [string]$request.destination, $flags)) {
-        $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        if ($errorCode -eq 80 -or $errorCode -eq 183) { [Console]::Write('{"ok":false,"code":"EEXIST"}'); exit 0 }
-        throw 'atomic_move_failed'
+      $created = $false
+      try {
+        if ($request.PSObject.Properties.Name -contains 'content') {
+          if ($request.replace -eq $true -or $request.content -isnot [string] -or $request.content.Length -gt 87384) { throw 'unsafe_file' }
+          $bytes = [Convert]::FromBase64String($request.content)
+          if ($bytes.Length -gt 65536) { throw 'unsafe_file' }
+          $acl = New-Object Security.AccessControl.FileSecurity
+          $acl.SetAccessRuleProtection($true, $false)
+          $acl.SetOwner($sid)
+          $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'Allow')))
+          # TokenOwner may be Administrators even when TokenUser is a normal account.
+          # Supply the descriptor at CreateNew; never repair an existing file's ACL.
+          $stream = [IO.FileStream]::new($target, [IO.FileMode]::CreateNew, [Security.AccessControl.FileSystemRights]::Write,
+            [IO.FileShare]::None, 4096, [IO.FileOptions]::WriteThrough, $acl)
+          $created = $true
+          try { $stream.Write($bytes, 0, $bytes.Length); $stream.Flush($true) } finally { $stream.Dispose() }
+        }
+        Private-ACL $target $false
+        $flags = 8; if ($request.replace -eq $true) { $flags = 9 }
+        if (-not [BridgeMove]::MoveFileEx($target, [string]$request.destination, $flags)) {
+          $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+          if ($errorCode -eq 80 -or $errorCode -eq 183) { [Console]::Write('{"ok":false,"code":"EEXIST"}'); exit 0 }
+          throw 'atomic_move_failed'
+        }
+      } finally {
+        if ($created -and [IO.File]::Exists($target)) { [IO.File]::Delete($target) }
       }
     }
     default { throw 'windows_security_unavailable' }

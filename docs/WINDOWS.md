@@ -8,6 +8,7 @@ Windows 支持正常启动 DSH、启用插件、项目登记、消息投递与�
 
 - 官方安装目录：`%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-plugin-codex-project-bridge`。
 - 默认私有状态：`%USERPROFILE%\.codex-dsh-bridge`。正常启动无需专用启动器或自定义环境变量。
+- 状态目录应保持较短：当前PowerShell/.NET与文件发布路径未全面支持Windows长路径，嵌套过深可能报 `atomic_move_failed`。优先默认位置，不为此关闭安全检查；迁移须保留完整回执与配置，见[启动说明](STARTUP.md)。
 - 工具和固定安装包放长期可信位置；不要安装后删除包管理器仍引用的源包。
 - 项目可以在共享目录，但桥状态、认证材料和回执须在本机；工作区不能包含桥状态，反向包含也拒绝。
 - DSH和CLI须使用同一用户和状态目录。祖先可被其他账户/沙箱组/未知主体替换或改权限时，安全检查会拒绝，不能靠放宽ACL解决。
