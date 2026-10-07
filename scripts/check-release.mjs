@@ -57,8 +57,8 @@ for (const kind of ['dependencies', 'optionalDependencies', 'devDependencies']) 
 for (const name of ['preinstall', 'install', 'postinstall', 'prepare']) assert.ok(!manifest.scripts?.[name]);
 assert.equal(manifest.private, undefined, 'public release must not be marked private');
 assert.deepEqual(manifest.publishConfig, {
-  registry: 'https://registry.npmjs.org/', access: 'public', tag: 'next'
-}, 'publish destination, visibility and preview tag must be explicit');
+  registry: 'https://registry.npmjs.org/', access: 'public'
+}, 'publish destination and visibility must be explicit; the workflow selects the tag');
 assert.deepEqual(manifest.repository, {
   type: 'git', url: 'git+https://github.com/YINJINHUA/codex-dsh-project-bridge.git'
 }, 'repository metadata mismatch');

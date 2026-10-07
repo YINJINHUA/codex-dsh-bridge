@@ -1,0 +1,37 @@
+name: Publish npm
+on:
+  release:
+    types: [published]
+
+# Serialize both channels; never interrupt an in-flight registry publication.
+concurrency:
+  group: npm-publication
+  cancel-in-progress: false
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.repository == 'YINJINHUA/codex-dsh-project-bridge' && github.event.release.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # Attach the exact published tarball and checksum to this Release.
+      actions: read # Require the exact commit's full CI, including all Windows shards.
+      id-token: write # npm trusted publishing; no long-lived npm token.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      # Pin a CLI that supports OIDC for both publish and dist-tag promotion.
+      # Install only on this disposable GitHub-hosted runner, without lifecycle scripts.
+      - run: npm install --global npm@11.21.0 --ignore-scripts --registry=https://registry.npmjs.org/
+      - run: npm run check:release
+      - name: Verify CI, select next or latest, and publish the fixed package
+        run: node scripts/publish-release.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}

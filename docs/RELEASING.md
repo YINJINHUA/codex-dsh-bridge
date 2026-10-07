@@ -1,30 +1,54 @@
 # 0.4.0 上传与升级说明
 
-本仓库采用 MIT。只上传源码仓库，不上传上一级工作目录、本机audit、已安装profile、通信状态或凭据。0.3.8起启用公开npm发布配置，registry固定为官方地址，默认标签为`next`；0.4.0尚未发布，已发布的0.3.8包保持原样。GitHub推送与Release目前均不自动触发npm发布。
+本仓库采用 MIT。只上传源码仓库，不上传上一级工作目录、本机 audit、已安装 profile、通信状态或凭据。已发布版本不可覆盖。
 
-## 发布前
+## GitHub Release 自动发布 npm
 
-1. 运行 `npm test`、`npm run check:release`，核 `node bin/bridge.mjs help` 版本为0.4.0。平台跳过不计为通过，实际测试范围见 [验证记录](SECURITY-REVIEW.md)。
-2. 检查提交差异，包含新增源码、测试与文档；不包含本机路径、实际对话ID、回执、日志或秘密。
-3. 使用 `npm pack --offline --ignore-scripts --pack-destination /absolute/private-output` 生成固定包；核清单和SHA256，安装文件须匹配。已正式分发包不可用不同字节覆盖；实现变化另分配版本。未发布草稿修补后须在新输出目录重新打包，保留旧包证据，并同时替换草稿安装包和校验文件。
-4. GitHub Desktop 中审阅后提交并推送；如发Release，标签为 `v0.4.0`。等待该提交的Actions检查通过，再核标签、源码和附件一致后发布。检查失败保持草稿，不用旧提交的成功结果替代。注明Windows仍为预览，CLI新会话不保证侧栏显示，未验链路不能称通过。
+`.github/workflows/publish.yml` 使用 npm 官方 OIDC 可信发布，不保存长期 npm Token、不关闭账号双重认证。普通提交、推送和 Release 草稿不会发布 npm。
 
-源码门禁在完整Git仓库中运行；npm安装包按npm规则不含package-lock.json及部分仓库元数据，不能用安装包运行源码门禁并据此判发布失败。安装包单独核文件清单/哈希和安装行为。
+| GitHub 操作 | npm 结果 |
+| --- | --- |
+| 发布预发行 Release（勾选 Set as a pre-release） | `next` |
+| 发布正式 Release（不勾选预发行） | `latest`，裸包名默认安装此版本 |
+| 将同一预发行 Release 转为正式 | 校验已发布包字节一致后，将该版本加入 `latest`；不重传或覆盖包 |
 
-CI 应包含 Linux/macOS 的 Node22/24 四组、Windows 三个分组及汇总 `test (windows-latest, 24)`，共八项。Windows 单组成功不代表全套通过，汇总须三组均成功；只改分组或测试也须等待当前提交检查，不沿用此前性能优化提交的通过结果。
+本次 0.4.0 使用 `v0.4.0` 正式 Release。Release 标签必须等于 `v` 加 package.json 版本；正式版不接受 `-rc` 等预发行版本号。改变版本号必须同步锁文件、CLI 和版本说明。
 
-## npm 手动发布
+### 维护者一次性配置
 
-首次发布前核包名可用性；registry返回404不保证最终能注册。维护者登录npm账号、完成邮箱及双重验证，勿把认证信息写入源码、日志或交接文档。先确认对应源码提交的CI通过，再发布同一份经清单和哈希验证的固定包：
+在 npm 包 Settings → Trusted Publisher 中选择 GitHub Actions：
 
-```sh
-npm publish /absolute/private-output/codex-dsh-project-bridge-0.4.0.tgz --dry-run --ignore-scripts --access public --tag next --registry=https://registry.npmjs.org/
-npm publish /absolute/private-output/codex-dsh-project-bridge-0.4.0.tgz --ignore-scripts --access public --tag next --registry=https://registry.npmjs.org/
-```
+- Organization or user：`YINJINHUA`
+- Repository：`codex-dsh-project-bridge`
+- Workflow filename：`publish.yml`（只填文件名）
+- Environment：留空（本工作流没有 environment）
+- 允许 `npm publish` 和 `npm dist-tag`；后者用于同版本由 `next` 升为 `latest`。只允许 stage 不够。
 
-第一条仅预演；第二条才会公开发布，并可能要求浏览器登录或双重验证。发布失败时先查registry实际状态，不能换内容重试相同已存在版本。发布后核版本、`dist-tags`及`dist.integrity`与固定包SHA512一致，再验证从registry取得包并在DSH加载。当前不承诺npm首次安装已验证；不以源码测试代替安装验证。GitHub附件使用相同包；已发布0.3.7保持原样。
+保存时完成 npm 要求的身份验证。新配置须在 npm 规定的有效期内完成首次成功发布；若过期按网站提示重新配置。官方要求 GitHub 托管 runner；此工作流使用 Node 24、固定 npm 11.21.0，后者支持 dist-tag 的 OIDC 认证。CLI 安装仅发生在临时 runner，不修改维护者电脑。
 
-后续可单独配置GitHub Actions可信发布（OIDC），只由版本发布触发；本版未启用，也不需要新增长期npm令牌。参考[npm发布](https://docs.npmjs.com/cli/v11/commands/npm-publish/)与[可信发布](https://docs.npmjs.com/trusted-publishers/)。
+### 每次发布
+
+1. 核版本、更新记录、源码差异及公开文件清单；运行 `npm run check:release` 和 `npm test`，然后提交并推送。
+2. 等该提交的 `checks` 全部通过：Linux/macOS Node 22/24 四组、Windows 三组及汇总，共八项。只认可默认分支上该 SHA 的最新 push 或手动检查；旧提交、PR、跳过或失败不算。
+3. 在该提交创建标签及 Release，选择预发行或正式。不要移动已发布标签，也不要沿用包含不同字节的旧附件。
+4. 发布 Release。`Publish npm` 复用上述 CI，核实时标签及 Release 类型，生成一次固定 `.tgz`，通过 OIDC 发布并核 npm 版本、标签、SHA512；最后添加同一包及 `SHA256SUMS.txt` 到 Release。
+5. 检查 `Publish npm` 成功和 npm 的实际标签。GitHub 页面显示 Release 不代表 npm 已完成。下载、安装与 DSH 实际加载仍需分别验证；CI 通过不等于实机安装通过。
+
+工作流从完整源码 checkout 执行门禁；npm 安装包按规则不含 package-lock.json 等仓库元数据，不能用安装包跑源码门禁来判定发布失败。
+
+### 失败、重跑与预发行升级
+
+- CI 尚未完成或失败时停止，不会绕过；待同一提交检查成功后重跑失败的 `Publish npm`。
+- npm 版本不存在才发布。已存在且字节一致时只修正所需标签或验证；不一致则停止，必须另用版本号。
+- 相同内容的预发行转正式只修改 `latest`；`next` 可继续指向同一版本，不自动删除。
+- `-rc` 版本不能作为正式版本；创建新的稳定版本及 Release。
+- npm 写入不做盲目重试。出现超时先核 registry 实际版本与标签；不能换包重试同一版本。
+- 附件已存在时校验 GitHub 提供的 SHA256，匹配则保留，不匹配或无校验信息则停止并人工核查，不自动覆盖。
+- 发布工作流串行运行；不要同时发布不同版本；流程拒绝将 `latest` 回退到较旧稳定版本。
+
+紧急手工发布也必须使用同一份经核验固定包，明确 `--tag next` 或 `--tag latest`，遵守账号的双重认证要求；不得把登录信息写进仓库。package.json 不固定 tag，自动流程按 Release 类型显式传入。
+
+参考 [npm 可信发布](https://docs.npmjs.com/trusted-publishers/) 与 [GitHub Release 事件](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release)。
 
 ## 安装与升级
 

@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 **Exchange local messages between Codex and DeepSeek Harness (DSH).** Register a project to message its conversations, inspect status, read DSH replies and explicitly create conversations.
 
-Version 0.4.0 (unreleased) · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
+Version 0.4.0 · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
 
 A community plugin, not an official product. It connects to the DSH Host (the desktop app’s background process) through local sockets or encrypted Windows named pipes, and to Codex through its official CLI. No UI automation, cloud relay or separate bridge API key. Both applications must run on the same computer; this plugin does not bridge remote machines.
 
@@ -39,7 +39,7 @@ This method is supported by DSH. Live installation under this plugin's new packa
 
 3. Install, check the displayed package name and actual version, then choose **Enable now**. Restart if the app requests it.
 
-Enter only the package name, without `npm install` or a shell command; no manual download is needed. A bare name uses the registry's default tag (normally `latest`). To pin a version, enter `codex-dsh-project-bridge@0.3.8`. As verified on 2026-10-08, 0.3.8 is published; this repository's 0.4.0 is not yet published, so do not request `@0.4.0` yet. If a newly published version is missing, check with the **official npm registry** (`https://registry.npmjs.org/`) in the install-source selector; mirrors may lag.
+Enter only the package name, without `npm install` or a shell command; no manual download is needed. A bare name uses the registry's default tag (normally `latest`). To pin a version, enter `codex-dsh-project-bridge@0.4.0`. Check that npm publication has finished; a GitHub Release alone does not mean its npm workflow has succeeded. If a newly published version is missing, check with the **official npm registry** (`https://registry.npmjs.org/`) in the install-source selector; mirrors may lag.
 
 Package names and versions are supported by the [official DSH plugin manager](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-plugin-manager/README.md). Check the installed version; a successful download alone does not prove the plugin loaded.
 
@@ -52,7 +52,7 @@ Obtain a fixed-version `.tgz` from a trusted release source, or [build it](docs/
 Use the `dsh` command provided by DSH Desktop; install or repair it through the app's **Manage dsh command…** menu. Launch Desktop at least once to initialize its profile, finish related tasks and **fully quit the app** (closing its window is not enough), then run:
 
 ```sh
-dsh plugin --profile desktop add codex-dsh-project-bridge@0.3.8 --ignore-scripts
+dsh plugin --profile desktop add codex-dsh-project-bridge@0.4.0 --ignore-scripts
 ```
 
 For an existing trusted local candidate archive:
@@ -66,10 +66,10 @@ Do not use `--offline` for a registry download. A separately npm-installed `dsh`
 To download a published archive first, run in your download directory:
 
 ```sh
-npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+npm pack codex-dsh-project-bridge@0.4.0 --registry=https://registry.npmjs.org/ --ignore-scripts
 ```
 
-Then install the `.tgz` using Option 2. `next` is a preview tag, separate from `latest`; publishing to `next` does not automatically change the default for a bare package name. GitHub pushes do not currently publish to npm automatically.
+Then install the `.tgz` using Option 2. `next` is a preview tag, separate from `latest`; publishing to `next` does not automatically change the default for a bare package name. Ordinary pushes do not publish npm packages. Publishing a GitHub prerelease targets `next`; a formal Release targets `latest`, after full CI passes for that exact commit. See [release instructions](docs/RELEASING.md).
 
 GUI installation does not imply the command's offline and script restrictions. Default installation locations:
 

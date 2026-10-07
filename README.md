@@ -4,7 +4,7 @@
 
 让 **Codex 与 DeepSeek Harness（DSH）在本机互发消息**。登记项目后，可向所属对话发信、查询状态、读取 DSH 答复，也支持显式创建对话。
 
-版本 0.4.0 · 未发布 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
+版本 0.4.0 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
 
 社区插件，非官方产品。使用本机 socket / Windows 加密命名管道连接 DSH 宿主（Host，即桌面应用的后台进程），通过官方 Codex CLI 通信；不模拟点击、不经云中转，桥本身无需 API Key。两款应用须运行在同一台电脑；不提供跨电脑远程桥接。
 
@@ -39,7 +39,7 @@
 
 3. 点击安装，核对显示的包名和实际版本，完成后点击**立即启用**；如提示重启，按提示操作。
 
-只填包名，不填 `npm install` 或整条命令，也不必先下载文件。裸包名使用安装源的默认版本标签（通常为 `latest`）；固定版本可填 `codex-dsh-project-bridge@0.3.8`。截至2026-10-08已核验发布的是0.3.8，本仓库0.4.0尚未发布，暂不要填写 `@0.4.0`。找不到刚发布的版本时，可在**安装源**选择 **npm 官方源**（`https://registry.npmjs.org/`）再核查；镜像可能尚未同步。
+只填包名，不填 `npm install` 或整条命令，也不必先下载文件。裸包名使用安装源的默认版本标签（通常为 `latest`）；固定版本可填 `codex-dsh-project-bridge@0.4.0`。新版本以 npm 实际发布成功为准，GitHub Release 出现不代表 npm 工作流已完成。找不到刚发布的版本时，可在**安装源**选择 **npm 官方源**（`https://registry.npmjs.org/`）再核查；镜像可能尚未同步。
 
 该入口接受包名及版本，依据 [DSH 官方插件管理说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-plugin-manager/README.zh.md)。安装完成后核实际版本，不将下载成功视为插件已正常加载。
 
@@ -52,7 +52,7 @@
 使用 DSH 桌面应用提供的 `dsh` 命令，可在应用菜单的**管理 dsh 命令…**中安装或修复。先至少打开一次 Desktop 初始化 profile，再结束相关任务并**完全退出应用**（只关闭窗口不等于退出），然后执行：
 
 ```sh
-dsh plugin --profile desktop add codex-dsh-project-bridge@0.3.8 --ignore-scripts
+dsh plugin --profile desktop add codex-dsh-project-bridge@0.4.0 --ignore-scripts
 ```
 
 已有可信的本地候选包时，也可离线安装：
@@ -66,10 +66,10 @@ dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.4.0.t
 如需先下载已发布安装包，在保存目录运行：
 
 ```sh
-npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+npm pack codex-dsh-project-bridge@0.4.0 --registry=https://registry.npmjs.org/ --ignore-scripts
 ```
 
-再按方式二安装生成的 `.tgz`。`next` 是预览标签，与 `latest` 分开；发布到 `next` 不会自动更新裸包名的默认版本。GitHub 推送目前不自动发布到 npm。
+再按方式二安装生成的 `.tgz`。`next` 是预览标签，与 `latest` 分开；发布到 `next` 不会自动更新裸包名的默认版本。普通 GitHub 推送不发布 npm；发布预发行 Release → `next`，正式 Release → `latest`，均须通过该提交的完整 CI。见[发布说明](docs/RELEASING.md)。
 
 GUI 安装不等同于上述命令的离线与禁脚本限制。默认安装位置：
 

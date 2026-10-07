@@ -10,6 +10,7 @@ export const shards = [
     "default-home.test.mjs",
     "secure-channel.test.mjs",
     "release-hygiene.test.mjs",
+    "release-publish.test.mjs",
     "process.test.mjs",
     "socket-mode.test.mjs"
   ],
