@@ -13,7 +13,7 @@ import { configureCodex } from '../lib/codex-host.mjs';
 import { configureCodexCreation, codexPolicy } from '../lib/codex-policy.mjs';
 import { configureDsh } from '../lib/dsh-policy.mjs';
 
-const help = `Codex ↔ DSH 项目通信桥 0.3.8
+const help = `Codex ↔ DSH 项目通信桥 0.3.9
 本机首次启用 Codex 宿主转发（在可信终端设置一次）：
   configure-codex --binary /absolute/path/to/codex
 仅本插件新建 DSH 对话的权限（本机显式设置，不改全局/已有对话）：

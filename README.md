@@ -4,7 +4,7 @@
 
 让 **Codex 与 DeepSeek Harness（DSH）在本机互发消息**。登记项目后，可向所属对话发信、查询状态、读取 DSH 答复，也支持显式创建对话。
 
-版本 0.3.8 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
+版本 0.3.9 · 未发布 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
 
 社区插件，非官方产品。使用本机 socket / Windows 加密命名管道连接 DSH 宿主（Host，即桌面应用的后台进程），通过官方 Codex CLI 通信；不模拟点击、不经云中转，桥本身无需 API Key。两款应用须运行在同一台电脑；不提供跨电脑远程桥接。
 
@@ -37,15 +37,15 @@
 先结束相关任务并退出 DSH，再执行：
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.3.8.tgz --offline --ignore-scripts
+dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.3.9.tgz --offline --ignore-scripts
 ```
 
 ### 从 npm 获取安装包
 
-0.3.8 是首个 npm 发布候选；只有 registry 已有该版本时，以下命令才可使用。在保存安装包的目录运行：
+0.3.8 已发布到 npm；本页 0.3.9 尚未发布，只有 registry 已有目标版本时，以下命令才可使用。在保存安装包的目录运行：
 
 ```sh
-npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+npm pack codex-dsh-project-bridge@0.3.9 --registry=https://registry.npmjs.org/ --ignore-scripts
 ```
 
 再按上面的方式把下载的 `.tgz` 安装到 DSH。不要用 `npm install -g` 代替 DSH 插件安装，它不会登记 desktop profile。npm 的 `next` 是预览标签，固定版本更便于复现；GitHub 推送目前不自动发布到 npm。

@@ -1,6 +1,6 @@
 {
   "name": "codex-dsh-project-bridge",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "license": "MIT",
   "description": "Codex ↔ DeepSeek Harness 本机项目通信桥：CLI 消息、状态查询及受控创建对话。权限和安装说明见插件详情与 README。",
   "type": "module",

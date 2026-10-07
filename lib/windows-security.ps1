@@ -6,6 +6,13 @@ try {
   $target = [IO.Path]::GetFullPath([string]$request.path)
   $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
   $trusted = @($sid.Value, 'S-1-5-18', 'S-1-5-32-544', 'S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')
+  function Read-ACL([string]$value) {
+    # Read fresh owner and DACL via .NET; avoid Get-Acl's module startup cost.
+    # Audit/SACL access is neither needed nor requested. Read failures fail closed.
+    $sections = [Security.AccessControl.AccessControlSections]::Owner -bor [Security.AccessControl.AccessControlSections]::Access
+    if ([IO.Directory]::Exists($value)) { return [IO.Directory]::GetAccessControl($value, $sections) }
+    return [IO.File]::GetAccessControl($value, $sections)
+  }
   function No-Reparse([string]$value) {
     $current = $value
     while ($current) {
@@ -25,7 +32,7 @@ try {
     No-Reparse $value
   }
   function Private-ACL([string]$value, [bool]$directory) {
-    $acl = Get-Acl -LiteralPath $value
+    $acl = Read-ACL $value
     if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'unsafe_file' }
     $rules = $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
     foreach ($rule in $rules) {
@@ -37,7 +44,7 @@ try {
     $parent = [IO.Directory]::GetParent($value)
     while ($null -ne $parent) {
       if (Test-Path -LiteralPath $parent.FullName) {
-        $acl = Get-Acl -LiteralPath $parent.FullName
+        $acl = Read-ACL $parent.FullName
         if ($trusted -notcontains $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value) { throw 'unsafe_directory' }
         foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
           if (($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) { continue }
@@ -74,7 +81,7 @@ try {
       if ([IO.Path]::GetExtension($target) -ne '.exe') { throw 'unsafe_binary' }
       $current = $target
       while ($current) {
-        $acl = Get-Acl -LiteralPath $current
+        $acl = Read-ACL $current
         if ($trusted -notcontains $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value) { throw 'unsafe_binary' }
         foreach ($rule in $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])) {
           if (($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) { continue }
@@ -89,13 +96,16 @@ try {
     'move' {
       Local-NTFS ([string]$request.destination)
       Trusted-Parents ([string]$request.destination)
+      # JSON writes prepare their parent within this invocation, with the same
+      # current-user/private-DACL checks as a standalone prepare operation.
+      if ($request.prepareParent -eq $true) { Prepare-Directory ([IO.Path]::GetDirectoryName($target)) }
       Private-ACL ([IO.Path]::GetDirectoryName($target)) $true
       Private-ACL ([IO.Path]::GetDirectoryName([string]$request.destination)) $true
       Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class BridgeMove { [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool MoveFileEx(string from, string to, uint flags); }'
       $created = $false
       try {
         if ($request.PSObject.Properties.Name -contains 'content') {
-          if ($request.replace -eq $true -or $request.content -isnot [string] -or $request.content.Length -gt 87384) { throw 'unsafe_file' }
+          if ($request.content -isnot [string] -or $request.content.Length -gt 87384) { throw 'unsafe_file' }
           $bytes = [Convert]::FromBase64String($request.content)
           if ($bytes.Length -gt 65536) { throw 'unsafe_file' }
           $acl = New-Object Security.AccessControl.FileSecurity

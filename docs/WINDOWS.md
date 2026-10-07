@@ -31,6 +31,8 @@ Windows 支持正常启动 DSH、启用插件、项目登记、消息投递与�
 
 静态PowerShell源码通过stdin JSON接收路径，不拼命令、不改全局执行策略。文件同步后用MoveFileEx WRITE_THROUGH原子发布，首次记录禁止覆盖。Windows慢检查运行在Worker，DSH会话接口仍由原Host调用。
 
+0.3.9候选将一次JSON新建/替换的目录准备、独占私有临时文件创建、Flush和原子发布合并到一次辅助程序调用。属主与DACL通过系统.NET的 [File.GetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.getaccesscontrol?view=netframework-4.8.1) / [Directory.GetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.directory.getaccesscontrol?view=netframework-4.8.1) 每次重新读取，保留原有规则判定；不缓存权限、不安装额外运行时、不放宽ACL。失败只清理本次成功独占创建的临时文件，原目标通过原子替换保持完整。
+
 普通Host请求期限60秒、客户端连接后等待90秒；单次系统检查另限10秒。Codex创建内层默认180秒，外层有独立更长期限；同步检查可能推迟定时器，不是硬实时保证。超时保留不明状态，不自动重试、解锁未结束操作或重启应用。
 
 ## 诊断与验证
