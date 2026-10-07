@@ -34,7 +34,7 @@ assert.equal(manifest.bin, undefined, 'external CLI shims are not part of the pl
 const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
 assert.equal(lock.name, manifest.name, 'lock name mismatch');
 assert.equal(lock.packages[''].name, manifest.name, 'lock root name mismatch');
-assert.equal(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8').trim(),
+assert.equal(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8').replace(/\r\n/g, '\n').trim(),
   '- insert:\n    - id: codex-project-local-bridge\n      name: ' + manifest.name,
   'DSH bundle must load the published package and retain its plugin identity');
 assert.equal(lock.version, manifest.version, 'lock version mismatch');
