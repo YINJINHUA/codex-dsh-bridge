@@ -12,20 +12,22 @@
 
 在可信本机终端运行应用自带的 CLI。若 `dsh` 已正确指向该 CLI：
 
+以下主命令用于0.3.8起的新包名。若卸载或升级0.3.7及以前版本，须按实际安装名称执行 `dsh plugin --profile desktop remove dsh-plugin-codex-project-bridge`。核旧包及其加载登记已移除后再安装新包，不同时加载两个包；原私有状态目录 `.codex-dsh-bridge` 保留，无需重新登记项目。自建客户端快捷入口若指向旧安装目录，应改为新目录中的 `bin/bridge.mjs`。
+
 ```sh
-dsh plugin --profile desktop remove dsh-plugin-codex-project-bridge
+dsh plugin --profile desktop remove codex-dsh-project-bridge
 ```
 
 macOS 标准应用安装位置示例：
 
 ```sh
-"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove dsh-plugin-codex-project-bridge
+"/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh" plugin --profile desktop remove codex-dsh-project-bridge
 ```
 
 Windows 标准按用户安装位置示例（PowerShell）：
 
 ```powershell
-& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove dsh-plugin-codex-project-bridge
+& "$env:LOCALAPPDATA\Programs\DeepSeek Harness\resources\runtime\cli\bin\dsh.cmd" plugin --profile desktop remove codex-dsh-project-bridge
 ```
 
 应用装在其他位置时，使用实际应用目录内的入口；命令不在 PATH 不代表需要重装。遇到版本差异，先查看 `dsh plugin --profile desktop remove --help`。
@@ -53,8 +55,10 @@ Windows 标准按用户安装位置示例（PowerShell）：
 
 **Disabling the plugin is not uninstalling it. Removing plugin code is not deleting conversations or bridge data.**
 
+For versions through 0.3.7, remove the actual old package with `dsh plugin --profile desktop remove dsh-plugin-codex-project-bridge` before installing the renamed package. Do not load both. Preserve `.codex-dsh-bridge` state; update any custom CLI shortcut that points at the old installation directory.
+
 1. Let related sessions and background tasks finish, then quit DSH normally and verify that its Host has exited. This is the tested procedure, not a claim that the CLI enforces it. Hot uninstall was not tested.
-2. Use the application's bundled CLI: `dsh plugin --profile desktop remove dsh-plugin-codex-project-bridge`. The macOS and Windows examples above show the standard application locations. If the app was installed elsewhere, use its actual CLI; a missing PATH entry is not a missing installation.
+2. Use the application's bundled CLI: `dsh plugin --profile desktop remove codex-dsh-project-bridge`. The macOS and Windows examples above show the standard application locations. If the app was installed elsewhere, use its actual CLI; a missing PATH entry is not a missing installation.
 3. Do **not** copy `--offline --ignore-scripts` from the add command onto remove. DSH 0.2.0-rc.2 with bundled pnpm 11.7.0 rejects these options for remove. Check the installed version's `remove --help` when needed.
 4. Check that the package, dependency, bundle registration and lockfile reference are gone. The current package does not declare external CLI shims; the client file is removed with the package. Retire only entries verified to point to this removed plugin. Retire any obsolete custom bridge launchers or shortcuts separately; retain the official DSH app entry. Do not delete the entire profile or edit session databases. Only handle actual residual loading entries; do not rewrite unrelated configuration.
 5. Preserve private bridge state, project registrations, permission policies, deduplication records, receipts, channel material, conversations, other plugins, tools and rollback packages. Uninstalling does not revoke existing session permissions. A complete data purge requires a separately defined scope.

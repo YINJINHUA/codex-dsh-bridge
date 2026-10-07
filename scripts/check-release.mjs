@@ -28,9 +28,15 @@ function inspect(dir) {
 
 inspect(root);
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+assert.equal(manifest.name, 'codex-dsh-project-bridge', 'package name mismatch');
 assert.equal(manifest.license, 'MIT');
 assert.equal(manifest.bin, undefined, 'external CLI shims are not part of the plugin package');
 const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+assert.equal(lock.name, manifest.name, 'lock name mismatch');
+assert.equal(lock.packages[''].name, manifest.name, 'lock root name mismatch');
+assert.equal(fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8').trim(),
+  '- insert:\n    - id: codex-project-local-bridge\n      name: ' + manifest.name,
+  'DSH bundle must load the published package and retain its plugin identity');
 assert.equal(lock.version, manifest.version, 'lock version mismatch');
 assert.equal(lock.packages[''].version, manifest.version, 'lock root version mismatch');
 const versionPatterns = {
@@ -49,7 +55,13 @@ for (const kind of ['dependencies', 'optionalDependencies', 'devDependencies']) 
   assert.equal(Object.keys(manifest[kind] || {}).length, 0, 'unexpected third-party dependency');
 }
 for (const name of ['preinstall', 'install', 'postinstall', 'prepare']) assert.ok(!manifest.scripts?.[name]);
-assert.equal(manifest.private, true, 'npm publishing remains explicitly disabled');
+assert.equal(manifest.private, undefined, 'public release must not be marked private');
+assert.deepEqual(manifest.publishConfig, {
+  registry: 'https://registry.npmjs.org/', access: 'public', tag: 'next'
+}, 'publish destination, visibility and preview tag must be explicit');
+assert.deepEqual(manifest.repository, {
+  type: 'git', url: 'git+https://github.com/YINJINHUA/codex-dsh-project-bridge.git'
+}, 'repository metadata mismatch');
 for (const name of ['README.md', 'README.en.md', 'LICENSE', 'SECURITY.md', 'docs/ARCHITECTURE.md', 'docs/SECURITY-REVIEW.md']) {
   assert.ok(fs.statSync(path.join(root, name)).isFile(), 'required public documentation missing');
 }

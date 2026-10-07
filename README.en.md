@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 **Exchange local messages between Codex and DeepSeek Harness (DSH).** Register a project to message its conversations, inspect status, read DSH replies and explicitly create conversations.
 
-Version 0.3.7 · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
+Version 0.3.8 · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
 
 A community plugin, not an official product. It connects to the DSH Host (the desktop app’s background process) through local sockets or encrypted Windows named pipes, and to Codex through its official CLI. No UI automation, cloud relay or separate bridge API key. Both applications must run on the same computer; this plugin does not bridge remote machines.
 
@@ -24,10 +24,12 @@ The plugin provides communication and project checks. **It is not an automatic s
 
 Requires DSH Desktop, Node.js 22+ and a signed-in Codex CLI with `queue` support. Use the official DSH desktop profile; keep the source checkout separate from the installed copy.
 
+From 0.3.8, the package and GitHub repository are named `codex-dsh-project-bridge`. Versions through 0.3.7 used `dsh-plugin-codex-project-bridge`: [remove that old package](docs/UNINSTALL.md) before installing the new one to avoid loading both. Private state remains in `.codex-dsh-bridge`; preserve registrations and receipts.
+
 ### Option 1: Add plugin in the desktop app
 
 1. Obtain a fixed-version `.tgz` from a trusted release source, or [build it](docs/RELEASING.md).
-2. Open **Plugins → Add plugin** in DSH and enter the package's absolute path, not a shell command. The package is not currently published to npm.
+2. Open **Plugins → Add plugin** in DSH and enter the package's absolute path, not a shell command.
 3. Open DSH normally after installation and enable the plugin. No dedicated launcher or custom environment variable is required.
 
 ### Option 2: Official command line
@@ -35,15 +37,25 @@ Requires DSH Desktop, Node.js 22+ and a signed-in Codex CLI with `queue` support
 Finish related work and quit DSH before running:
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/dsh-plugin-codex-project-bridge-0.3.7.tgz --offline --ignore-scripts
+dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.3.8.tgz --offline --ignore-scripts
 ```
+
+### Get the package from npm
+
+0.3.8 is the first npm release candidate. Once that version exists in the registry, run this in your package download directory:
+
+```sh
+npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+```
+
+Then install the downloaded `.tgz` into DSH using either method above. `npm install -g` does not register the plugin in the desktop profile. The `next` tag denotes a preview; pin the version for reproducibility. GitHub pushes do not currently publish to npm automatically.
 
 GUI installation does not imply the command's offline and script restrictions. Default installation locations:
 
 | Platform | Plugin directory |
 | --- | --- |
-| macOS | `~/.dsh/profiles/desktop/node_modules/dsh-plugin-codex-project-bridge` |
-| Windows | `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-plugin-codex-project-bridge` |
+| macOS | `~/.dsh/profiles/desktop/node_modules/codex-dsh-project-bridge` |
+| Windows | `%USERPROFILE%\.dsh\profiles\desktop\node_modules\codex-dsh-project-bridge` |
 
 For upgrades, [remove the previous package](docs/UNINSTALL.md) while preserving registrations and delivery records. See [startup and data locations](docs/STARTUP.md).
 

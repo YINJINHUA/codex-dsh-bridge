@@ -6,7 +6,7 @@ Windows 支持正常启动 DSH、启用插件、项目登记、消息投递与�
 
 需要 Windows、本机 NTFS、Node.js 22+、系统 Windows PowerShell 5.1，以及已登录的 DSH Desktop 和支持 queue 的 Codex CLI。复用可信安装，PATH 缺失不代表未安装。
 
-- 官方安装目录：`%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-plugin-codex-project-bridge`。
+- 官方安装目录：`%USERPROFILE%\.dsh\profiles\desktop\node_modules\codex-dsh-project-bridge`。
 - 默认私有状态：`%USERPROFILE%\.codex-dsh-bridge`。正常启动无需专用启动器或自定义环境变量。
 - 状态目录应保持较短：当前PowerShell/.NET与文件发布路径未全面支持Windows长路径，嵌套过深可能报 `atomic_move_failed`。优先默认位置，不为此关闭安全检查；迁移须保留完整回执与配置，见[启动说明](STARTUP.md)。
 - 工具和固定安装包放长期可信位置；不要安装后删除包管理器仍引用的源包。

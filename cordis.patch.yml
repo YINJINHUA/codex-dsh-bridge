@@ -1,3 +1,3 @@
 - insert:
     - id: codex-project-local-bridge
-      name: dsh-plugin-codex-project-bridge
+      name: codex-dsh-project-bridge

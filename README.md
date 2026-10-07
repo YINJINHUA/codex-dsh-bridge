@@ -4,7 +4,7 @@
 
 让 **Codex 与 DeepSeek Harness（DSH）在本机互发消息**。登记项目后，可向所属对话发信、查询状态、读取 DSH 答复，也支持显式创建对话。
 
-版本 0.3.7 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
+版本 0.3.8 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
 
 社区插件，非官方产品。使用本机 socket / Windows 加密命名管道连接 DSH 宿主（Host，即桌面应用的后台进程），通过官方 Codex CLI 通信；不模拟点击、不经云中转，桥本身无需 API Key。两款应用须运行在同一台电脑；不提供跨电脑远程桥接。
 
@@ -24,10 +24,12 @@
 
 需要 DSH 桌面版、Node.js 22+ 和已登录且支持 `queue` 的 Codex CLI。使用 DSH 官方 desktop profile 安装，源码目录与安装目录分开。
 
+从0.3.8起，包名和GitHub仓库统一为 `codex-dsh-project-bridge`。0.3.7及以前使用旧包名 `dsh-plugin-codex-project-bridge`；升级时先按[卸载说明](docs/UNINSTALL.md)移除旧包，再安装新包，避免同时加载。私有状态目录仍为 `.codex-dsh-bridge`，保留原登记和回执。
+
 ### 方式一：客户端“添加插件”
 
 1. 准备固定版本的 `.tgz` 安装包（从可信发布来源获取，或按[打包说明](docs/RELEASING.md)生成）。
-2. 在 DSH 的 **插件 → 添加插件** 中填写安装包的绝对路径；不要填写整条命令。当前未发布到 npm。
+2. 在 DSH 的 **插件 → 添加插件** 中填写安装包的绝对路径；不要填写整条命令。
 3. 安装后正常打开 DSH，启用本插件。无需专用启动脚本或自定义环境变量。
 
 ### 方式二：官方命令行安装
@@ -35,15 +37,25 @@
 先结束相关任务并退出 DSH，再执行：
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/dsh-plugin-codex-project-bridge-0.3.7.tgz --offline --ignore-scripts
+dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.3.8.tgz --offline --ignore-scripts
 ```
+
+### 从 npm 获取安装包
+
+0.3.8 是首个 npm 发布候选；只有 registry 已有该版本时，以下命令才可使用。在保存安装包的目录运行：
+
+```sh
+npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+```
+
+再按上面的方式把下载的 `.tgz` 安装到 DSH。不要用 `npm install -g` 代替 DSH 插件安装，它不会登记 desktop profile。npm 的 `next` 是预览标签，固定版本更便于复现；GitHub 推送目前不自动发布到 npm。
 
 GUI 安装不等同于上述命令的离线与禁脚本限制。默认安装位置：
 
 | 平台 | 插件目录 |
 | --- | --- |
-| macOS | `~/.dsh/profiles/desktop/node_modules/dsh-plugin-codex-project-bridge` |
-| Windows | `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-plugin-codex-project-bridge` |
+| macOS | `~/.dsh/profiles/desktop/node_modules/codex-dsh-project-bridge` |
+| Windows | `%USERPROFILE%\.dsh\profiles\desktop\node_modules\codex-dsh-project-bridge` |
 
 升级前按[卸载说明](docs/UNINSTALL.md)移除旧包，保留项目登记与通信记录。启动和数据目录见[启动说明](docs/STARTUP.md)。
 

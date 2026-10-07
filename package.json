@@ -1,8 +1,7 @@
 {
-  "name": "dsh-plugin-codex-project-bridge",
-  "version": "0.3.7",
+  "name": "codex-dsh-project-bridge",
+  "version": "0.3.8",
   "license": "MIT",
-  "private": true,
   "description": "Codex ↔ DeepSeek Harness 本机项目通信桥：CLI 消息、状态查询及受控创建对话。权限和安装说明见插件详情与 README。",
   "type": "module",
   "main": "plugin/index.mjs",
@@ -39,5 +38,18 @@
         "./cordis.patch.yml"
       ]
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YINJINHUA/codex-dsh-project-bridge.git"
+  },
+  "homepage": "https://github.com/YINJINHUA/codex-dsh-project-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/YINJINHUA/codex-dsh-project-bridge/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
   }
 }
