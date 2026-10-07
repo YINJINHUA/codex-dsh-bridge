@@ -29,3 +29,12 @@ test('encrypted real transport preserves project checks, receipts and bounded re
   await assert.rejects(exchange(f.base, f.req('status'), { channelKey: randomBytes(32) }), /authentication_failed/);
   assert.equal(f.calls.length, 1);
 });
+
+test('transport reports bridge not ready before startup and after shutdown', { timeout: 60000 }, async t => {
+  const f = fixture(); t.after(f.cleanup);
+  await assert.rejects(async () => exchange(f.base, f.req('status')), /bridge_not_ready/);
+  const stop = await start(f.ctx, f.base);
+  try { assert.equal((await exchange(f.base, f.req('status'))).ok, true); }
+  finally { await stop(); }
+  await assert.rejects(async () => exchange(f.base, f.req('status')), /bridge_not_ready/);
+});

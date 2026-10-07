@@ -5,10 +5,14 @@ import { randomUUID } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { privateDir } from '../lib/config.mjs';
 import { safeError } from '../lib/errors.mjs';
+import { selectTests } from './test-shards.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 let owned;
 try {
+  const discovered = fs.readdirSync(path.join(root, 'tests')).filter(n => n.endsWith('.test.mjs')).sort();
+  const selection = selectTests(discovered, process.argv.slice(2));
+  if (selection.list) { console.log(JSON.stringify(selection)); process.exit(0); }
   const env = { ...process.env };
   if (process.platform === 'win32') {
     // Do not inherit an absent or sandbox-writable TEMP. Never change an existing ACL.
@@ -18,12 +22,14 @@ try {
     privateDir(candidate); owned = candidate;
     env.TEMP = candidate; env.TMP = candidate;
   }
-  const files = fs.readdirSync(path.join(root, 'tests')).filter(n => n.endsWith('.test.mjs')).sort();
+  const files = selection.files;
+  console.log(JSON.stringify({ testShard: selection.shard ? `${selection.shard}/3` : 'all', files }));
   const result = spawnSync(process.execPath, ['--test', ...files.map(n => path.join(root, 'tests', n))],
     { cwd: root, env, stdio: 'inherit', windowsHide: true });
   process.exitCode = result.status ?? 1;
 } catch (error) {
-  console.error(JSON.stringify({ ok: false, error: safeError(error), stage: 'test_preflight',
+  const code = ['test_shard_coverage_mismatch', 'invalid_test_shard_arguments'].includes(error.message) ? error.message : safeError(error);
+  console.error(JSON.stringify({ ok: false, error: code, stage: 'test_preflight',
     hint: 'Choose a protected local parent with BRIDGE_TEST_PARENT; do not weaken ACL checks.' }));
   process.exitCode = 1;
 } finally {

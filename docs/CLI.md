@@ -92,7 +92,12 @@ DSH 最近结果可能是上轮，必须核回执的 `hostRequestId` 是否在 `
   等待真实落地后会自动释放。若宿主确实永久挂起，先核实不明交付、保存工作并安全退出 DSH，
   再重新打开；不要清回执、换编号或另开通道重发。请求超时不证明宿主已取消。
 - `unknown_project`：CLI 或 socket 请求的项目尚未登记；先核登记名称。
-- `ENOENT`：通信端点或其他必要文件未出现；核 DSH 插件是否启用。PATH 缺失不等于工具未安装。
+- `bridge_not_ready`：通信端点/所需通信文件不存在，或连接被拒绝。核DSH是否运行、插件是否启用、两端状态目录是否一致，不代表需要重装系统工具。
+- `state_file_missing` / `state_file_exists`：Windows状态文件缺失或独占创建发现已存在；底层保留ENOENT/EEXIST语义，既有去重与默认配置行为保持。
+- `ENOENT`：其他必要路径不存在，例如登记根掉线；按当前操作核对应路径，不能一概当作桥未运行。
+- `request_timeout_delivery_unknown`：Host请求超时，操作可能仍在进行；先核交付，不换编号重试。
+- `unsafe_socket` / `socket_path_too_long`：POSIX端点类型/权限不符或路径过长；doctor不检查端点可连接性或长度，不删端点绕过门禁。
+- `session_not_found` / `not_accepted`：会话未找到或Host未确认接受；创建阶段出错仍须保留创建记录核查。
 - 异常退出留下 socket 时，先确认原 Host 已退出且端点不可连接，再人工处理该通用桥端点。
 
 
@@ -100,7 +105,7 @@ DSH 最近结果可能是上轮，必须核回执的 `hostRequestId` 是否在 `
 
 - `publication_busy`：另一个进程正在发布 POSIX 状态文件。先核进展，不删锁或换请求编号绕过。崩溃可能留下 `.publish` 目录；人工恢复前须核清未知交付，并确认所有写入者已停止。
 - `unsafe_acl` / `posix_acl_check_unavailable`：Mac ACL 不符合要求或无法检查。不要自动删除 ACL；在已安装插件目录运行 `node scripts/doctor.mjs` 定位。
-- `bridge_error`：未预期异常已转为安全错误码。定点核本机 Host 日志，不公开个人路径或消息正文。
+- `bridge_error` / `bridge_failed`：未预期异常已转为安全错误码。定点核本机 Host 日志，不公开个人路径或消息正文。
 - `codex_invalid_response` / `codex_response_too_large`：已配置 CLI 的响应格式不符或超限；核对版本及可信安装。
 
-POSIX发布未结束会返回忙状态，不能清锁、换编号绕过去重。启动失败先运行已安装目录下的doctor；它不修权限，也不重发消息。Windows纯CLI创建可能已有会话但返回结果不明，请保留原ID核查。
+POSIX发布未结束会返回忙状态，不能清锁、换编号绕过去重。启动失败先运行已安装目录下的doctor；它只检查本机权限，不确认桥已在线，不修权限，也不重发消息。Windows纯CLI创建可能已有会话但返回结果不明，请保留原ID核查。

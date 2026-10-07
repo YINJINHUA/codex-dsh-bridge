@@ -18,5 +18,6 @@ if (process.argv[2]) check('binary_permissions', () => {
   windowsSecurity('binary', process.argv[2]);
 });
 const ok = checks.every(c => c.ok);
-console.log(JSON.stringify({ ok, checks, note: 'No repair, credential reads or message delivery performed.' }));
+console.log(JSON.stringify({ ok, checks, scope: 'local_permissions', hostConnectivity: 'not_checked',
+  note: 'Permission checks only; success does not establish bridge availability. No repair, credential reads or message delivery performed.' }));
 process.exitCode = ok ? 0 : 1;

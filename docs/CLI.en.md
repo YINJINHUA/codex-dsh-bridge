@@ -77,6 +77,11 @@ Creation intent and known/planned IDs are stored durably. Repeating a completed 
 - `unknown_project` / `project_mismatch` / `workspace_not_found`: check registration and actual application project membership. Do not broaden registration to bypass the check.
 - `session_busy` / `bridge_busy`: bounded requests are still in progress. Wait and inspect status rather than dispatching duplicates.
 - `host_request_unsettled` / `host_capacity_unsettled`: a timed-out Host operation has not settled; its lock remains held, with at most 16 unsettled requests. A timeout is not cancellation.
+- `bridge_not_ready`: a communication file/endpoint is missing or the connection was refused. Check DSH, plugin enablement and matching state directories. Other security errors remain separate.
+- `state_file_missing` / `state_file_exists`: Windows state-file failures retain ENOENT/EEXIST codes for configuration and deduplication logic. Other ENOENT errors may concern a missing project root.
+- `request_timeout_delivery_unknown`: the Host deadline elapsed without a known outcome; do not resend under a new ID.
+- `unsafe_socket` / `socket_path_too_long`: POSIX endpoint permissions/type or path length failed validation.
+- `session_not_found` / `not_accepted`: the Host did not find the conversation or confirm acceptance; preserve any creation record before investigating.
 - A missing endpoint requires checking that DSH and the plugin are running with the same state environment. The bridge does not automatically delete stale endpoints or restart applications.
 
 If the Host is permanently stuck, first reconcile unknown delivery and save ongoing work, then quit DSH safely and reopen it. Do not delete receipts as a retry mechanism. The bridge only terminates child processes it owns, never desktop applications by process name.
@@ -86,7 +91,7 @@ If the Host is permanently stuck, first reconcile unknown delivery and save ongo
 
 - `publication_busy`: another process owns an unfinished POSIX publication. Check its progress; do not delete locks or change request IDs to bypass it. A crash can leave a `.publish` directory; reconcile unknown delivery and confirm all writers stopped before manual recovery.
 - `unsafe_acl` / `posix_acl_check_unavailable`: Mac ACL rejected or could not be checked. Do not remove ACLs automatically. Run `node scripts/doctor.mjs` from the installed plugin directory.
-- `bridge_error`: an unexpected exception was sanitized. Inspect local Host logs without publishing private paths or message text.
+- `bridge_error` / `bridge_failed`: an unexpected exception was sanitized. Inspect local Host logs without publishing private paths or message text.
 - `codex_invalid_response` / `codex_response_too_large`: configured CLI response is malformed or exceeds bounds; verify its version and trusted installation.
 
-The diagnostic does not repair permissions or resend messages. Windows CLI creation may have created a conversation even when the returned outcome is unknown; preserve the original ID and inspect it.
+The diagnostic reports `scope: local_permissions` and `hostConnectivity: not_checked`: success does not prove the bridge is online. It does not test endpoint length/connectivity, repair permissions or resend messages. Host create/rename calls currently receive no cancellation signal; stopping the plugin or Worker does not prove those operations were cancelled. Windows CLI creation may have created a conversation even when the returned outcome is unknown; preserve the original ID and inspect it.

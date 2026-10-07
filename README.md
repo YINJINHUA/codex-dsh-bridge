@@ -4,7 +4,7 @@
 
 让 **Codex 与 DeepSeek Harness（DSH）在本机互发消息**。登记项目后，可向所属对话发信、查询状态、读取 DSH 答复，也支持显式创建对话。
 
-版本 0.3.9 · 未发布 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
+版本 0.4.0 · 未发布 · MIT · Node.js 22+ · macOS 已实测 / Windows 预览 / Linux 未实机验证
 
 社区插件，非官方产品。使用本机 socket / Windows 加密命名管道连接 DSH 宿主（Host，即桌面应用的后台进程），通过官方 Codex CLI 通信；不模拟点击、不经云中转，桥本身无需 API Key。两款应用须运行在同一台电脑；不提供跨电脑远程桥接。
 
@@ -26,29 +26,50 @@
 
 从0.3.8起，包名和GitHub仓库统一为 `codex-dsh-project-bridge`。0.3.7及以前使用旧包名 `dsh-plugin-codex-project-bridge`；升级时先按[卸载说明](docs/UNINSTALL.md)移除旧包，再安装新包，避免同时加载。私有状态目录仍为 `.codex-dsh-bridge`，保留原登记和回执。
 
-### 方式一：客户端“添加插件”
+### 方式一：客户端填写 npm 包名（推荐）
 
-1. 准备固定版本的 `.tgz` 安装包（从可信发布来源获取，或按[打包说明](docs/RELEASING.md)生成）。
-2. 在 DSH 的 **插件 → 添加插件** 中填写安装包的绝对路径；不要填写整条命令。
-3. 安装后正常打开 DSH，启用本插件。无需专用启动脚本或自定义环境变量。
+该入口受DSH官方支持；本插件新包名的实际安装及旧包升级尚未完成实机验收，见[验证记录](docs/SECURITY-REVIEW.md)。
 
-### 方式二：官方命令行安装
+1. 打开 DSH 桌面版，进入 **插件 → 添加插件**。
+2. 在包名输入框填写：
 
-先结束相关任务并退出 DSH，再执行：
+   ```text
+   codex-dsh-project-bridge
+   ```
+
+3. 点击安装，核对显示的包名和实际版本，完成后点击**立即启用**；如提示重启，按提示操作。
+
+只填包名，不填 `npm install` 或整条命令，也不必先下载文件。裸包名使用安装源的默认版本标签（通常为 `latest`）；固定版本可填 `codex-dsh-project-bridge@0.3.8`。截至2026-10-08已核验发布的是0.3.8，本仓库0.4.0尚未发布，暂不要填写 `@0.4.0`。找不到刚发布的版本时，可在**安装源**选择 **npm 官方源**（`https://registry.npmjs.org/`）再核查；镜像可能尚未同步。
+
+该入口接受包名及版本，依据 [DSH 官方插件管理说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-plugin-manager/README.zh.md)。安装完成后核实际版本，不将下载成功视为插件已正常加载。
+
+### 方式二：客户端安装本地压缩包
+
+从可信发布来源取得固定版本 `.tgz`（或按[打包说明](docs/RELEASING.md)生成），在同一个**添加插件**输入框填写文件绝对路径，然后安装并启用。不要填写源码文件夹或整条命令。
+
+### 方式三：桌面版自带命令行
+
+使用 DSH 桌面应用提供的 `dsh` 命令，可在应用菜单的**管理 dsh 命令…**中安装或修复。先至少打开一次 Desktop 初始化 profile，再结束相关任务并**完全退出应用**（只关闭窗口不等于退出），然后执行：
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.3.9.tgz --offline --ignore-scripts
+dsh plugin --profile desktop add codex-dsh-project-bridge@0.3.8 --ignore-scripts
 ```
 
-### 从 npm 获取安装包
-
-0.3.8 已发布到 npm；本页 0.3.9 尚未发布，只有 registry 已有目标版本时，以下命令才可使用。在保存安装包的目录运行：
+已有可信的本地候选包时，也可离线安装：
 
 ```sh
-npm pack codex-dsh-project-bridge@0.3.9 --registry=https://registry.npmjs.org/ --ignore-scripts
+dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.4.0.tgz --offline --ignore-scripts
 ```
 
-再按上面的方式把下载的 `.tgz` 安装到 DSH。不要用 `npm install -g` 代替 DSH 插件安装，它不会登记 desktop profile。npm 的 `next` 是预览标签，固定版本更便于复现；GitHub 推送目前不自动发布到 npm。
+网络包名安装不要加 `--offline`。单独通过 npm 安装的 `dsh` 不能管理 Desktop profile，见 [DSH 官方桌面说明](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/README.zh.md#内置命令运行时)。`npm install -g codex-dsh-project-bridge` 也不会登记桌面插件。
+
+如需先下载已发布安装包，在保存目录运行：
+
+```sh
+npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+```
+
+再按方式二安装生成的 `.tgz`。`next` 是预览标签，与 `latest` 分开；发布到 `next` 不会自动更新裸包名的默认版本。GitHub 推送目前不自动发布到 npm。
 
 GUI 安装不等同于上述命令的离线与禁脚本限制。默认安装位置：
 

@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 **Exchange local messages between Codex and DeepSeek Harness (DSH).** Register a project to message its conversations, inspect status, read DSH replies and explicitly create conversations.
 
-Version 0.3.9 (unreleased) · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
+Version 0.4.0 (unreleased) · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
 
 A community plugin, not an official product. It connects to the DSH Host (the desktop app’s background process) through local sockets or encrypted Windows named pipes, and to Codex through its official CLI. No UI automation, cloud relay or separate bridge API key. Both applications must run on the same computer; this plugin does not bridge remote machines.
 
@@ -26,29 +26,50 @@ Requires DSH Desktop, Node.js 22+ and a signed-in Codex CLI with `queue` support
 
 From 0.3.8, the package and GitHub repository are named `codex-dsh-project-bridge`. Versions through 0.3.7 used `dsh-plugin-codex-project-bridge`: [remove that old package](docs/UNINSTALL.md) before installing the new one to avoid loading both. Private state remains in `.codex-dsh-bridge`; preserve registrations and receipts.
 
-### Option 1: Add plugin in the desktop app
+### Option 1: Enter the npm package name in DSH (recommended)
 
-1. Obtain a fixed-version `.tgz` from a trusted release source, or [build it](docs/RELEASING.md).
-2. Open **Plugins → Add plugin** in DSH and enter the package's absolute path, not a shell command.
-3. Open DSH normally after installation and enable the plugin. No dedicated launcher or custom environment variable is required.
+This method is supported by DSH. Live installation under this plugin's new package name and upgrading from the old package have not yet been verified; see [validation](docs/SECURITY-REVIEW.md).
 
-### Option 2: Official command line
+1. Open DSH Desktop → **Plugins → Add plugin**.
+2. Enter:
 
-Finish related work and quit DSH before running:
+   ```text
+   codex-dsh-project-bridge
+   ```
+
+3. Install, check the displayed package name and actual version, then choose **Enable now**. Restart if the app requests it.
+
+Enter only the package name, without `npm install` or a shell command; no manual download is needed. A bare name uses the registry's default tag (normally `latest`). To pin a version, enter `codex-dsh-project-bridge@0.3.8`. As verified on 2026-10-08, 0.3.8 is published; this repository's 0.4.0 is not yet published, so do not request `@0.4.0` yet. If a newly published version is missing, check with the **official npm registry** (`https://registry.npmjs.org/`) in the install-source selector; mirrors may lag.
+
+Package names and versions are supported by the [official DSH plugin manager](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-plugin-manager/README.md). Check the installed version; a successful download alone does not prove the plugin loaded.
+
+### Option 2: Install a local archive in DSH
+
+Obtain a fixed-version `.tgz` from a trusted release source, or [build it](docs/RELEASING.md). Enter its absolute file path in the same **Add plugin** field, then install and enable it. Do not enter a source checkout or shell command.
+
+### Option 3: The desktop app's bundled CLI
+
+Use the `dsh` command provided by DSH Desktop; install or repair it through the app's **Manage dsh command…** menu. Launch Desktop at least once to initialize its profile, finish related tasks and **fully quit the app** (closing its window is not enough), then run:
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.3.9.tgz --offline --ignore-scripts
+dsh plugin --profile desktop add codex-dsh-project-bridge@0.3.8 --ignore-scripts
 ```
 
-### Get the package from npm
-
-0.3.8 is available on npm; 0.3.9 on this page is not released yet. Once the target version exists in the registry, run this in your package download directory:
+For an existing trusted local candidate archive:
 
 ```sh
-npm pack codex-dsh-project-bridge@0.3.9 --registry=https://registry.npmjs.org/ --ignore-scripts
+dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.4.0.tgz --offline --ignore-scripts
 ```
 
-Then install the downloaded `.tgz` into DSH using either method above. `npm install -g` does not register the plugin in the desktop profile. The `next` tag denotes a preview; pin the version for reproducibility. GitHub pushes do not currently publish to npm automatically.
+Do not use `--offline` for a registry download. A separately npm-installed `dsh` cannot manage the Desktop profile; see the [official desktop documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/README.md). `npm install -g codex-dsh-project-bridge` also does not register a desktop plugin.
+
+To download a published archive first, run in your download directory:
+
+```sh
+npm pack codex-dsh-project-bridge@0.3.8 --registry=https://registry.npmjs.org/ --ignore-scripts
+```
+
+Then install the `.tgz` using Option 2. `next` is a preview tag, separate from `latest`; publishing to `next` does not automatically change the default for a bare package name. GitHub pushes do not currently publish to npm automatically.
 
 GUI installation does not imply the command's offline and script restrictions. Default installation locations:
 

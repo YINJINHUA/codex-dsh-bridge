@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fixture, sidB, fakeCodex, windowsScript, uuidA } from './helpers.mjs';
 import { queueOnce, resolveBinary } from '../lib/process.mjs';
 import { readThread } from '../lib/codex.mjs';
@@ -44,7 +45,10 @@ $acl.AddAccessRule($rule)
   const junction = path.join(f.dir, 'linked-state');
   fs.symlinkSync(f.base, junction, 'junction');
   assert.throws(() => privateDir(junction), /unsafe_reparse_point/);
-  assert.throws(() => resolveBinary(path.join(f.dir, 'fake.cmd')), /codex_unavailable/);
+  const command = path.join(f.dir, 'fake.cmd');
+  fs.writeFileSync(command, '@exit /b 0\r\n');
+  assert.throws(() => windowsSecurity('binary', command), /unsafe_binary/);
+  assert.throws(() => resolveBinary(command), /codex_unavailable/);
 });
 
 test('Windows metadata and queue timeouts stop their owned executable', native, async t => {
@@ -121,4 +125,40 @@ $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid,
   assert.throws(() => writeNew(path.join(dir, 'new.json'), {}), /unsafe_file/);
   assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { first: true });
   assert.deepEqual(fs.readdirSync(dir), ['value.json']);
+});
+
+test('Windows missing state is distinct from failed security checks and an unavailable bridge', native, t => {
+  const f = fixture(); t.after(f.cleanup);
+  assert.throws(() => readJSON(path.join(f.base, 'missing.json')),
+    e => e.code === 'ENOENT' && e.message === 'state_file_missing');
+  const file = path.join(f.base, 'occupied.json'); writeNew(file, { first: true });
+  assert.throws(() => writeNew(file, {}), e => e.code === 'EEXIST' && e.message === 'state_file_exists');
+  for (const op of ['status', 'result']) {
+    const result = spawnSync(process.execPath, ['bin/bridge.mjs', op, '--project', 'alpha', '--to', 'dsh',
+      '--session', f.req().session], { encoding: 'utf8', timeout: 30000,
+      env: { ...process.env, CODEX_DSH_BRIDGE_HOME: f.base } });
+    assert.ifError(result.error);
+    assert.equal(result.status, 1);
+    assert.equal(JSON.parse(result.stdout).error, 'bridge_not_ready');
+  }
+  assert.deepEqual(readJSON(file), { first: true });
+});
+
+test('Windows rejects dangerous ancestor rights without repairing ACLs or changing state', native, t => {
+  const f = fixture(); t.after(f.cleanup);
+  const parent = privateDir(path.join(f.dir, 'ancestor'));
+  const child = privateDir(path.join(parent, 'child'));
+  const file = path.join(child, 'value.json'); writeNew(file, { sentinel: true });
+  assert.throws(() => readJSON(child), /unsafe_file/);
+  windowsScript(`$ErrorActionPreference = 'Stop'
+$r = [Console]::In.ReadToEnd() | ConvertFrom-Json
+$acl = [IO.Directory]::GetAccessControl($r.path, [Security.AccessControl.AccessControlSections]::Access)
+$sid = New-Object Security.Principal.SecurityIdentifier('S-1-1-0')
+$acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($sid, 'DeleteSubdirectoriesAndFiles', 'Allow')))
+[IO.Directory]::SetAccessControl($r.path, $acl)`, { path: parent });
+  assert.throws(() => readJSON(file), /unsafe_directory/);
+  assert.throws(() => replaceJSON(file, { changed: true }), /unsafe_directory/);
+  assert.throws(() => privateDir(path.join(parent, 'new-child')), /unsafe_directory/);
+  assert.equal(fs.existsSync(path.join(parent, 'new-child')), false);
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { sentinel: true });
 });

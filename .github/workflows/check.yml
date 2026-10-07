@@ -9,9 +9,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
         node: [22, 24]
-        include:
-          - os: windows-latest
-            node: 24
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -24,3 +21,36 @@ jobs:
       - run: npm run check:release
       - run: npm test
       - run: npm pack --dry-run --ignore-scripts --json
+
+  windows_shards:
+    name: Windows tests (${{ matrix.shard }}/3)
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        shard: [1, 2, 3]
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - run: npm run check:release
+      - run: npm test -- --shard=${{ matrix.shard }}/3
+      - run: npm pack --dry-run --ignore-scripts --json
+
+  windows:
+    # Preserve the original check name for repositories requiring that status.
+    name: test (windows-latest, 24)
+    needs: windows_shards
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require all Windows shards to pass
+        env:
+          RESULT: ${{ needs.windows_shards.result }}
+        run: test "$RESULT" = success
