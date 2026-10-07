@@ -68,6 +68,8 @@ doctor 的 `scope: local_permissions`、`hostConnectivity: not_checked` 表示�
 
 ### 开发者：Windows CI 分组
 
+GitHub Actions 在每个Windows runner先用系统Windows PowerShell 5.1做一次只读初始化（步骤上限1分钟），再运行测试；初始化不读取桥状态、不修改ACL，也不复用权限判定，正式系统检查仍限10秒。这样将可能的首次解释器启动开销与安全检查区分，仍须以云端运行结果验证效果。
+
 GitHub Actions 使用三个独立 Windows runner 并行执行测试，再由 `test (windows-latest, 24)` 汇总结果。所有分组通过才算 Windows 通过；失败、取消或跳过任一分组都不能获得成功汇总。本地 `npm test` 仍运行全套，也可定位单组：
 
 ```sh

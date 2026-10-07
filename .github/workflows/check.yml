@@ -38,6 +38,18 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
+      - name: Initialize Windows PowerShell before timed security checks
+        shell: powershell
+        timeout-minutes: 1
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Windows tests spawn 5.1, while the default Actions shell is PowerShell 7.
+          # Read-only cold start; no bridge state, ACL changes or relaxed runtime limits.
+          $sections = [Security.AccessControl.AccessControlSections]::Owner -bor [Security.AccessControl.AccessControlSections]::Access
+          $item = Get-Item -LiteralPath $env:SystemRoot -Force
+          $acl = [IO.Directory]::GetAccessControl($item.FullName, $sections)
+          if ($null -eq $acl) { throw 'Windows PowerShell ACL initialization failed' }
+          Write-Output 'Windows PowerShell and ACL APIs initialized; runtime checks retain their 10-second deadline.'
       - run: npm run check:release
       - run: npm test -- --shard=${{ matrix.shard }}/3
       - run: npm pack --dry-run --ignore-scripts --json
