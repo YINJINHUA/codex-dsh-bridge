@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { releasePlan, requireGreenChecks, publishAction, requiredJobs, repository, packageName } from '../scripts/release-plan.mjs';
+import { releasePlan, requireGreenChecks, publishAction, shouldPublishEvent, requiredJobs, repository, packageName } from '../scripts/release-plan.mjs';
+import { waitForRegistry } from '../scripts/registry-wait.mjs';
 
 const sha = 'a'.repeat(40);
 const manifest = { name: packageName, version: '0.4.0', repository: { url: `git+https://github.com/${repository}.git` } };
@@ -10,6 +11,57 @@ function run(extra = {}) { return { id: 7, run_number: 3, head_sha: sha, head_br
   head_repository: { full_name: repository }, event: 'push', path: '.github/workflows/check.yml',
   status: 'completed', conclusion: 'success', ...extra }; }
 function jobs() { return requiredJobs.map(name => ({ name, run_id: 7, status: 'completed', conclusion: 'success' })); }
+
+test('stable duplicate event is skipped while previews and promotion each have one writer', () => {
+  assert.equal(shouldPublishEvent(event()), false);
+  assert.equal(shouldPublishEvent({ ...event(), action: 'released' }), true);
+  assert.equal(shouldPublishEvent(event(true)), true);
+  assert.equal(shouldPublishEvent({ ...event(true), action: 'released' }), false);
+  assert.equal(shouldPublishEvent({ ...event(true), action: 'edited' }), false);
+  assert.equal(shouldPublishEvent({ ...event(true), repository: { full_name: 'fork/repo' } }), false);
+  assert.equal(shouldPublishEvent({ ...event(true), release: { ...event(true).release, draft: true } }), false);
+});
+
+function registryFixture() {
+  let time = 0, reads = 0, sleeps = [];
+  const plan = releasePlan(event(), manifest, sha);
+  const ready = { versions: { [plan.version]: { dist: { integrity: 'sha512-same' } } },
+    'dist-tags': { latest: plan.version } };
+  return { plan, ready, get time() { return time; }, get reads() { return reads; }, sleeps,
+    read: fn => async () => { reads++; return fn(time); },
+    clock: { now: () => time, sleep: async ms => { sleeps.push(ms); time += ms; } } };
+}
+
+test('registry can take more than a minute and stops as soon as both bytes and tag are visible', async () => {
+  const f = registryFixture();
+  await waitForRegistry(f.read(time => time >= 180000 ? f.ready :
+    time >= 90000 ? { ...f.ready, 'dist-tags': { latest: '0.3.8' } } : {}),
+  f.plan, 'sha512-same', f.clock);
+  assert.equal(f.time, 180000);
+  assert.equal(f.reads, 19);
+});
+
+test('registry already ready avoids sleeping; persistent absence stops at five minutes', async () => {
+  const ready = registryFixture();
+  await waitForRegistry(ready.read(() => ready.ready), ready.plan, 'sha512-same', ready.clock);
+  assert.equal(ready.reads, 1); assert.deepEqual(ready.sleeps, []);
+  const missing = registryFixture();
+  await assert.rejects(waitForRegistry(missing.read(() => ({})), missing.plan, 'sha512-same', missing.clock),
+    /verification pending/);
+  assert.equal(missing.time, 300000);
+  assert.equal(missing.reads, 31);
+});
+
+test('registry byte conflicts and newer latest stop immediately instead of waiting or overwriting', async () => {
+  for (const value of [
+    { versions: { '0.4.0': { dist: { integrity: 'sha512-other' } } } },
+    { 'dist-tags': { latest: '0.5.0' } }
+  ]) {
+    const f = registryFixture();
+    await assert.rejects(waitForRegistry(f.read(() => value), f.plan, 'sha512-same', f.clock));
+    assert.equal(f.reads, 1); assert.deepEqual(f.sleeps, []);
+  }
+});
 
 test('Release type chooses next or latest; draft, tag mismatch and unstable formal versions fail', () => {
   assert.equal(releasePlan(event(true), manifest, sha).channel, 'next');

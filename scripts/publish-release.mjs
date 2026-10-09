@@ -4,12 +4,17 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { releasePlan, requireGreenChecks, publishAction, repository, packageName } from './release-plan.mjs';
+import { releasePlan, requireGreenChecks, publishAction, shouldPublishEvent, repository, packageName } from './release-plan.mjs';
 import { verifyPack } from './pack-manifest.mjs';
+import { waitForRegistry } from './registry-wait.mjs';
 
 const env = process.env;
 assert.equal(env.GITHUB_EVENT_NAME, 'release');
 const event = JSON.parse(fs.readFileSync(env.GITHUB_EVENT_PATH, 'utf8'));
+if (!shouldPublishEvent(event)) {
+  console.log('No publication for this event/type; the matching channel event handles it.');
+  process.exit(0);
+}
 const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const plan = releasePlan(event, manifest, env.GITHUB_SHA);
 assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), plan.sha);
@@ -68,15 +73,9 @@ if (action === 'publish') {
   npm(['dist-tag', 'add', `${packageName}@${plan.version}`, plan.channel, '--registry=' + registry]);
 }
 // Registry propagation may lag; only these read-only verification requests are retried.
-let verified = false;
-for (let attempt = 0; attempt < 12; attempt++) {
-  const after = await metadata();
-  if (after.versions?.[plan.version]?.dist?.integrity === integrity && after['dist-tags']?.[plan.channel] === plan.version) {
-    verified = true; break;
-  }
-  await new Promise(resolve => setTimeout(resolve, 5000));
-}
-assert.ok(verified, 'registry verification pending; inspect it before rerunning (never change published bytes)');
+await waitForRegistry(metadata, plan, integrity, {
+  onPending: seconds => console.log(`Waiting for registry visibility: ${seconds}s elapsed (up to 300s; read-only).`)
+});
 // Never replace an existing release attachment with different bytes.
 for (const [name, data] of [[plan.filename, bytes], ['SHA256SUMS.txt', checksum]]) {
   const assets = live.assets.filter(asset => asset.name === name);

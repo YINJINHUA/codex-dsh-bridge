@@ -12,9 +12,13 @@ permissions:
 
 jobs:
   publish:
-    if: github.repository == 'YINJINHUA/codex-dsh-project-bridge' && github.event.release.draft == false
+    # Stable publication emits both events. Only released handles the stable channel.
+    if: >-
+      github.repository == 'YINJINHUA/codex-dsh-project-bridge' && github.event.release.draft == false &&
+      ((github.event.action == 'published' && github.event.release.prerelease == true) ||
+       (github.event.action == 'released' && github.event.release.prerelease == false))
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write # Attach the exact published tarball and checksum to this Release.
       actions: read # Require the exact commit's full CI, including all Windows shards.

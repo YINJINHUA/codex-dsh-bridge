@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 
 export const repository = 'YINJINHUA/codex-dsh-project-bridge';
 export const packageName = 'codex-dsh-project-bridge';
+export function shouldPublishEvent(event) {
+  return event.repository?.full_name === repository && event.release?.draft === false &&
+    ((event.action === 'published' && event.release.prerelease === true) ||
+     (event.action === 'released' && event.release.prerelease === false));
+}
 export const requiredJobs = [
   'test (ubuntu-latest, 22)', 'test (ubuntu-latest, 24)',
   'test (macos-latest, 22)', 'test (macos-latest, 24)',
