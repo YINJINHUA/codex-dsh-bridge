@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Codex ↔ DSH Project Bridge",
-    "description": "Local Codex ↔ DSH messages, status and controlled conversation creation. Enable the plugin, configure Codex and register a project; see README.en.md.\n\nInstall and enable dsh-xsession for same-workspace DSH peer messages; workers/reviewers can retain the app permission defaults. Cross-project messaging requires another suitable plugin.\n\nNo automatic task dispatch or privilege elevation. DSH full access requires explicit configuration. Prefer native creation by an existing Codex conversation; CLI creation does not guarantee sidebar visibility."
+    "description": "Local Codex ↔ DSH messages, status and controlled conversation creation. Enable the plugin, configure Codex and register a project; see README.en.md.\n\nDSH peer messages require a separate plugin, such as dsh-xsession: workers/reviewers can retain restricted permissions within one project workspace. Cross-project messaging needs another plugin. See the README example for installation and the project link.\n\nNo automatic task dispatch or privilege elevation. DSH full access requires explicit configuration. Prefer native creation by an existing Codex conversation; CLI creation does not guarantee sidebar visibility."
   }
 }

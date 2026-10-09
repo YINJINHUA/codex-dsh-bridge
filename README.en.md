@@ -82,9 +82,7 @@ For upgrades, [remove the previous package](docs/UNINSTALL.md) while preserving 
 
 ### Companion: DSH peer messaging
 
-For the 3/4/5 handoffs below, separately install and enable **`dsh-xsession`** in DSH's Add plugin dialog (compatibility baseline: `0.1.2`). [Project and documentation](https://github.com/YINJINHUA/dsh-xsession). It exposes `xsession_*` tools inside DSH so workers can retain the app defaults. This bridge handles Codex ↔ DSH and creation; neither package changes the other's permissions.
-
-Peers must share **one DSH Host and the same canonical workspace root**. Parent/child directories and separate roots under one bridge registration do not qualify. For cross-project conversations, choose and verify another suitable plugin; this pairing does not provide that routing. See the [companion guide](docs/XSESSION.en.md).
+Internal DSH messaging requires a separate plugin; [`dsh-xsession`](https://github.com/YINJINHUA/dsh-xsession) is one option. See the [workflow example below](#suggested-workflow-plan-execute-and-independently-review) for its introduction and in-app installation, and the [companion guide](docs/XSESSION.en.md) for detailed boundaries. It is not needed for Codex ↔ DSH messaging alone.
 
 ## Configure and send your first message
 
@@ -127,7 +125,15 @@ node bin/bridge.mjs result --project my-app --to dsh --session DSH_SESSION_ID
 
 **Review:** 1 writes review instructions → 2 → the same 3 creates 5 → 5 writes a report → 3 → 2 → 1 makes the final assessment.
 
-Use available, authorized Codex-native messages for 1↔2 and this bridge for 2↔3. **Use the separately installed `dsh-xsession` for messages and callbacks among DSH conversations 3, 4 and 5.** Use actual DSH session IDs in the same workspace. Without it, 3 can collect reports with bounded checks; this bridge does not automatically wake an ended coordinator.
+Use available, authorized Codex-native messages for 1↔2 and this bridge for 2↔3. **Messages and callbacks among DSH conversations 3, 4 and 5 require a separate messaging plugin; [`dsh-xsession`](https://github.com/YINJINHUA/dsh-xsession) is one option.**
+
+`dsh-xsession` supports least-privilege collaboration: workers and reviewers can retain workspace-write or read-only permissions and message through native tools, without granting full access merely to communicate. This reduces unnecessary permission exposure. It does not change session permissions or add a security sandbox; recipients must still check authorization.
+
+It only connects **different conversations in the same project workspace on one DSH Host**, using an identical canonical root; parent/child directories do not qualify. **Choose another suitable plugin for cross-project messaging.**
+
+In-app installation: open **DSH → Plugins → Add plugin**, enter **`dsh-xsession`** (tested version: `0.1.2`; optionally pin `dsh-xsession@0.1.2`), then install and enable it. Follow any restart prompt. Do not enter `npm install` or install it globally. See the [GitHub project](https://github.com/YINJINHUA/dsh-xsession) and [companion guide](docs/XSESSION.en.md).
+
+Without an internal messaging plugin, 3 can collect reports with bounded checks; this bridge does not automatically wake an ended coordinator.
 
 Use `--dsh-permission inherit` (follow DSH defaults) when creating 4/5; full access for 3 requires explicit local configuration. See the [workflow guide](docs/WORKFLOW.en.md) for commands, compatibility and permissions. Simple tasks need fewer roles; cost depends on models and calls.
 

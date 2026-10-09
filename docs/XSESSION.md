@@ -6,6 +6,8 @@
 
 ## 安装与职责
 
+本指南以可选的 [`dsh-xsession`](https://github.com/YINJINHUA/dsh-xsession) 为例；本桥不要求绑定这一内部通信插件。
+
 在 DSH「插件 → 添加插件」分别填写 `codex-dsh-project-bridge` 和 `dsh-xsession`，安装并启用。更新按客户端提示重启；不要中断有未决投递的任务。两者是独立包，本桥不会自动安装、调用或更改 xsession 配置。只做 Codex ↔ DSH 通信时不必装 xsession。
 
 | 方向/操作 | 使用什么 |

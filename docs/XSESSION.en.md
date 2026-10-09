@@ -6,6 +6,8 @@ Compatibility baseline: bridge 0.4.1, `dsh-xsession` 0.1.2, DSH Desktop 0.2.0-rc
 
 ## Install and choose the right interface
 
+This guide uses the optional [`dsh-xsession`](https://github.com/YINJINHUA/dsh-xsession) companion as an example; the bridge does not require that particular internal messaging plugin.
+
 In DSH's Plugins → Add plugin, install and enable `codex-dsh-project-bridge` and `dsh-xsession` separately. Follow restart prompts during upgrades without interrupting unresolved deliveries. They are independent packages: this bridge neither installs nor invokes xsession or changes its configuration. Cross-app messaging alone does not require xsession.
 
 | Direction/operation | Interface |

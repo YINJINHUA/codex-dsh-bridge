@@ -1,6 +1,8 @@
 # Five-conversation execution and review workflow
 
-**Companion plugin:** separately install and enable `dsh-xsession` (baseline 0.1.2) for native `xsession_*` messages among 3/4/5 in one workspace. Bridge-created workers are independent top-level sessions supported by this plugin; no parent/child relationship is fabricated. The packages are independent and do not alter each other's permissions. Cross-project conversations require another suitable plugin. See the [companion guide](XSESSION.en.md).
+**Internal messaging requires a separate plugin; [`dsh-xsession`](https://github.com/YINJINHUA/dsh-xsession) is one option** (tested baseline: 0.1.2). It lets workers/reviewers retain workspace-write or read-only permissions and use native messaging tools without granting full access solely for communication, reducing unnecessary permission exposure. It adds no security sandbox; recipients must still check authorization. It requires one DSH Host and the same canonical workspace root. Choose another suitable plugin for cross-project messaging.
+
+**In-app installation:** open DSH → Plugins → Add plugin, enter `dsh-xsession` (or pin `dsh-xsession@0.1.2`), install and enable it, then follow restart prompts. Do not enter `npm install`. Bridge-created workers are supported independent top-level sessions. The packages are installed separately and do not alter each other's permissions. See the [companion guide](XSESSION.en.md).
 
 The bounded polling and workspace-report collection described below is a fallback when that internal messaging capability is absent. It is not an automatic 3/4/5 message chain and cannot wake a coordinator after its turn ends.
 
@@ -32,7 +34,7 @@ Sequence: **1 writes plan → 2 creates 3 → 3 creates executor 4 → 4 reports
 
 Use Codex-native coordination or workspace documents between 1 and 2. For internal DSH handoffs, select and verify a compatible plugin, or use bounded report collection by 3 as the fallback. Only 2/3 exchange cross-application messages; 4/5 do not need bridge authentication material. The plugin does not automatically watch documents, dispatch tasks or run the entire workflow. Permission failures are reported, not automatically escalated. Queued is not completed.
 
-### DSH 3 ↔ 4/5: use dsh-xsession
+### DSH 3 ↔ 4/5: an example using dsh-xsession
 
 3 includes its actual DSH session ID, scope, document paths and callback instructions in the initial worker prompt, then creates 4/5 with `--dsh-permission inherit`. Workers use `xsession_list` to identify an online same-workspace peer and `xsession_send` to report; 3 uses the same tools for later handoffs. Restricted workers need neither the bridge CLI nor its private state or elevated permissions.
 
