@@ -1,6 +1,6 @@
 # Five-conversation execution and review workflow
 
-**Separate DSH plugin required:** native internal messaging and low-permission worker callbacks or wakeups among 3, 4 and 5 require another messaging/subagent plugin configured for their conversation relationship. This bridge does not include or install it. Bridge-created sessions are independent top-level conversations, so a plugin limited to native parent/child agents may not connect them. Verify creation, permissions and compatibility separately.
+**Companion plugin:** separately install and enable `dsh-xsession` (baseline 0.1.2) for native `xsession_*` messages among 3/4/5 in one workspace. Bridge-created workers are independent top-level sessions supported by this plugin; no parent/child relationship is fabricated. The packages are independent and do not alter each other's permissions. Cross-project conversations require another suitable plugin. See the [companion guide](XSESSION.en.md).
 
 The bounded polling and workspace-report collection described below is a fallback when that internal messaging capability is absent. It is not an automatic 3/4/5 message chain and cannot wake a coordinator after its turn ends.
 
@@ -32,13 +32,13 @@ Sequence: **1 writes plan → 2 creates 3 → 3 creates executor 4 → 4 reports
 
 Use Codex-native coordination or workspace documents between 1 and 2. For internal DSH handoffs, select and verify a compatible plugin, or use bounded report collection by 3 as the fallback. Only 2/3 exchange cross-application messages; 4/5 do not need bridge authentication material. The plugin does not automatically watch documents, dispatch tasks or run the entire workflow. Permission failures are reported, not automatically escalated. Queued is not completed.
 
-### DSH 3 ↔ 4/5: current messaging boundary
+### DSH 3 ↔ 4/5: use dsh-xsession
 
-Bridge `create --to dsh` creates independent top-level sessions through the DSH Host (the desktop background process), not native parent/child agents. The official subagent-control plugin's `send_message` supports eligible direct parent/child relationships, not arbitrary independent conversations sharing a workspace. A session created at 3's request is not automatically its native child. See the [official subagent control documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/subagent/tool-subagent-control/README.md).
+3 includes its actual DSH session ID, scope, document paths and callback instructions in the initial worker prompt, then creates 4/5 with `--dsh-permission inherit`. Workers use `xsession_list` to identify an online same-workspace peer and `xsession_send` to report; 3 uses the same tools for later handoffs. Restricted workers need neither the bridge CLI nor its private state or elevated permissions.
 
-With a workspace-write new-session default, 4/5 can read instructions and write reports inside their permitted workspace. Direct bridge replies from them may be blocked by private state/endpoint access and remain unverified; do not compensate by upgrading them or copying authentication material. Full-access coordinator 3 can message 4/5, query `status`/`result` and read their reports. Idle/inactive alone is not completion: correlate the creation receipt's hostRequestId, the relevant turn, and the report's task/revision or hash.
+Follow the [companion guide](XSESSION.en.md) for stable request IDs and final handoffs. `accepted` means queued: verify the actual reply, report, task and revision. Auto wakes idle peers but only injects into running peers; use explicit `followup` when the final report requires another turn. Do not send a duplicate. Offline/archived peers cannot receive; preserve unknown outcomes without new-ID retries.
 
-Collect results with bounded, infrequent checks within the authorized coordination flow. Record a pending handoff on timeout or missing output, rather than endlessly reading logs or recreating work. **The plugin does not automatically wake an ended coordinator 3 when 4/5 finish.** A user or separately configured, explicitly authorized coordination flow must resume it in that case. This example is not an out-of-the-box five-agent scheduler. Switching to native subagents or Agent Teams requires separate checks of availability, messaging and permission inheritance; do not assume it implements the same general new-session defaults.
+Without the companion, full-access 3 can still perform bounded status/result checks and read reports within the authorized flow; this fallback does not wake an ended coordinator. A read-only worker cannot write report files: return an allowed concise result or have an authorized writable coordinator save it. Peer messages are not human authorization. Neither plugin is an automatic scheduler.
 
 ### Codex-native 1 ↔ 2 messaging
 

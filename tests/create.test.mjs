@@ -8,6 +8,7 @@ import { handle } from '../plugin/core.mjs';
 import { codexCreate } from '../lib/codex-create.mjs';
 import { start } from '../plugin/index.mjs';
 import { exchange } from '../lib/transport.mjs';
+import { validateCreate } from '../lib/creation.mjs';
 
 function setup(t) {
   const f = fixture(); t.after(f.cleanup);
@@ -21,6 +22,15 @@ function setup(t) {
   const req = { op: 'create', project: 'alpha', id: 'create-1', revision: cfg.revision, root: f.a, title: 'Synthetic child', text: 'Reply to the authorized parent only.' };
   return { ...f, created, renamed, cfg, req };
 }
+
+test('creation title cannot add lines or control characters to the routing header', () => {
+  const req = { op: 'create', project: 'alpha', id: 'title-check', revision: 'a'.repeat(64),
+    root: '/synthetic', title: 'Readable title', text: 'Synthetic task\nwith multiple lines' };
+  assert.doesNotThrow(() => validateCreate(req));
+  for (const control of ['\n', '\r', '\t', '\0', '\x7f']) {
+    assert.throws(() => validateCreate({ ...req, title: 'Title' + control + 'suffix' }), /invalid_create_request/);
+  }
+});
 
 test('DSH creation is project-scoped, names and prompts once, with durable duplicate receipt', async t => {
   const f = setup(t);

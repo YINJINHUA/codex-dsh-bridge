@@ -13,7 +13,7 @@
 
 | 操作 | 所需访问与实际写入 |
 | --- | --- |
-| 安装或更新 DSH 插件 | 相关工作先安全停止。GUI在“插件→添加插件”输入固定包路径；CLI先退出DSH再运行 `plugin --profile desktop add` 并加 `--offline --ignore-scripts`。两者写当前desktop profile的包及包管理记录，GUI不承诺同样的离线/脚本限制。按提示重开后核版本；不删除桥状态或账号资料。 |
+| 安装或更新 DSH 插件 | 相关工作先安全停止。GUI在“插件→添加插件”输入 npm 包名、固定版本或可信本地包路径；CLI先退出DSH再运行 `plugin --profile desktop add` 并加 `--ignore-scripts`，仅缓存完整时追加 `--offline`。两者写当前desktop profile的包及包管理记录，GUI不承诺同样的脚本限制。按提示重开后核版本；不删除桥状态或账号资料。 |
 | `register` / `unregister` | 读取用户指定项目目录的真实路径和目录身份，创建/删除桥私有目录的项目登记。不会创建、删除应用项目或聊天。登记不等于证明调用者身份。 |
 | `configure-codex --binary ...` | 在可信终端明确指定已有 Codex CLI；检查绝对路径、文件和本机权限，保存到私有 `codex-runtime.json`。启用宿主代执行能力；不从请求正文选命令、不下载工具、不写全局 PATH。文件不含 API Key。 |
 

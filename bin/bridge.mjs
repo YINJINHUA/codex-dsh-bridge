@@ -13,7 +13,7 @@ import { configureCodex } from '../lib/codex-host.mjs';
 import { configureCodexCreation, codexPolicy } from '../lib/codex-policy.mjs';
 import { configureDsh } from '../lib/dsh-policy.mjs';
 
-const help = `Codex ↔ DSH 项目通信桥 0.4.0
+const help = `Codex ↔ DSH 项目通信桥 0.4.1
 本机首次启用 Codex 宿主转发（在可信终端设置一次）：
   configure-codex --binary /absolute/path/to/codex
 仅本插件新建 DSH 对话的权限（本机显式设置，不改全局/已有对话）：
@@ -40,6 +40,8 @@ Codex 方向默认经 DSH 宿主执行；--via direct 显式使用原直接 CLI 
 direct 模式从 PATH 或 CODEX_DSH_CODEX 指定的可信绝对路径发现 Codex CLI。
 本机登记默认放在 macOS/Linux 的 ~/.codex-dsh-bridge 或 Windows 的 %USERPROFILE%\\.codex-dsh-bridge，DSH 插件与 CLI 必须使用同一目录。
 退出 0 是查询/入队成功，不是任务完成。超时不要换编号盲目重发。
+DSH 同工作区内部消息另装 dsh-xsession，在 DSH 对话中调用 xsession_* 工具；不是本 CLI 子命令。
+跨项目对话需另选插件；本桥不会替 xsession 放宽工作区限制。
 注册不会创建 DSH/Codex 项目。完整说明见 README.md。`;
 
 export function parse(argv) {

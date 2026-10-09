@@ -50,7 +50,7 @@ node bin/bridge.mjs result --project my-app --to dsh --session session-TARGET-UU
 node bin/bridge.mjs status --project my-app --to codex --session TARGET-CODEX-UUID
 ```
 
-Match the send receipt's `hostRequestId` against `latestTurn.requestIds`, then inspect `startSeq`, `endSeq` and `reason`. A bounded window may contain an older turn or no complete turn; `latestTurn: null` is not success. DSH `running` is not proof of healthy progress. Codex summary `notLoaded` is not evidence that its desktop task stopped.
+Match the send receipt's `hostRequestId` against `latestTurn.requestIds`, then inspect `startSeq`, `endSeq` and `reason`. A bounded window may contain an older turn or no complete turn; `latestTurn: null` is not success. DSH `running` is not proof of healthy progress. Codex summary `notLoaded` is not evidence that its desktop task stopped. For a handoff, prepare the existing receiver through the normal Codex app flow before sending. If delivery is already queued but the receiver is not loaded, inspect and prepare that same receiver; do not resend or switch destinations. Receiver preparation is not itself proof that the bridge message arrived.
 
 ## Explicit creation: advanced Codex usage
 
@@ -80,6 +80,10 @@ Creation intent and known/planned IDs are stored durably. Repeating a completed 
 - `bridge_not_ready`: a communication file/endpoint is missing or the connection was refused. Check DSH, plugin enablement and matching state directories. Other security errors remain separate.
 - `state_file_missing` / `state_file_exists`: Windows state-file failures retain ENOENT/EEXIST codes for configuration and deduplication logic. Other ENOENT errors may concern a missing project root.
 - `request_timeout_delivery_unknown`: the Host deadline elapsed without a known outcome; do not resend under a new ID.
+- `incomplete_response` / `invalid_response`: the response frame is empty, truncated, missing its terminating newline, or malformed. This does not prove the request was never executed; reconcile its original ID before any retry.
+- `response_identity_mismatch` / `authentication_failed` / `invalid_channel_key`: response correlation or channel authentication failed. Check that Host and CLI use the same trusted private state; do not disable authentication or replace keys blindly.
+- `transport_timeout_delivery_unknown`: the transport deadline expired without a known result. Preserve the original request and check the destination; do not send a duplicate.
+- `response_too_large`: the response exceeded the protocol limit; do not remove size checks to accept it.
 - `unsafe_socket` / `socket_path_too_long`: POSIX endpoint permissions/type or path length failed validation.
 - `session_not_found` / `not_accepted`: the Host did not find the conversation or confirm acceptance; preserve any creation record before investigating.
 - A missing endpoint requires checking that DSH and the plugin are running with the same state environment. The bridge does not automatically delete stale endpoints or restart applications.

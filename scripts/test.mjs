@@ -24,7 +24,10 @@ try {
   }
   const files = selection.files;
   console.log(JSON.stringify({ testShard: selection.shard ? `${selection.shard}/3` : 'all', files }));
-  const result = spawnSync(process.execPath, ['--test', ...files.map(n => path.join(root, 'tests', n))],
+  // Bound competing PowerShell security helpers on a single Windows machine.
+  // Cloud shards still run on three independent runners; no test deadline changes.
+  const concurrency = process.platform === 'win32' ? ['--test-concurrency=2'] : [];
+  const result = spawnSync(process.execPath, ['--test', ...concurrency, ...files.map(n => path.join(root, 'tests', n))],
     { cwd: root, env, stdio: 'inherit', windowsHide: true });
   process.exitCode = result.status ?? 1;
 } catch (error) {

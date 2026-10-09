@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { releasePlan, requireGreenChecks, publishAction, repository, packageName } from './release-plan.mjs';
+import { verifyPack } from './pack-manifest.mjs';
 
 const env = process.env;
 assert.equal(env.GITHUB_EVENT_NAME, 'release');
@@ -40,10 +41,14 @@ const jobs = (await github(`/actions/runs/${selected.id}/attempts/${selected.run
 requireGreenChecks(runs, jobs, plan.sha, event.repository.default_branch);
 
 const output = fs.mkdtempSync(path.join(env.RUNNER_TEMP, 'npm-release-'));
-function npm(args) { return execFileSync('npm', args, { encoding: 'utf8', timeout: 180000, stdio: ['ignore', 'pipe', 'inherit'] }); }
+function npm(args) {
+  const childEnv = Object.fromEntries(Object.entries(env).filter(([key]) => !['GH_TOKEN', 'GITHUB_TOKEN'].includes(key)));
+  return execFileSync('npm', args, { env: childEnv, encoding: 'utf8', timeout: 180000, stdio: ['ignore', 'pipe', 'inherit'] });
+}
 const packed = JSON.parse(npm(['pack', '--ignore-scripts', '--json', '--pack-destination', output]));
 assert.equal(packed.length, 1);
 assert.equal(packed[0].filename, plan.filename);
+verifyPack(packed[0], process.cwd());
 const tarball = path.join(output, plan.filename);
 const bytes = fs.readFileSync(tarball);
 const integrity = 'sha512-' + createHash('sha512').update(bytes).digest('base64');

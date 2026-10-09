@@ -92,7 +92,6 @@ function dispatch(client, req, { active, unsettled, controllers, jobs, ctx, base
   const timer = setTimeout(() => {
     unsettled.add(lock);
     controller.abort(); respond(client, { ok: false, error: 'request_timeout_delivery_unknown' });
-    client.destroy();
     ctx.logger?.warn?.('Bridge Host request remains unsettled after timeout; delivery may be unknown. No automatic reset.');
   }, req.target === 'codex' ? Math.max(requestMs, req.op === 'create' ? 210000 : 60000) :
     req.op === 'create' ? Math.max(requestMs, 60000) : requestMs);
@@ -116,7 +115,11 @@ export function respond(client, value) {
   if (Buffer.byteLength(wire) > 65536) wire = '{"ok":false,"error":"response_too_large"}\n';
   const channel = channels.get(client);
   if (channel) wire = JSON.stringify(channel.seal(JSON.parse(wire), 'response')) + '\n';
+  // Drain the response before closing, but bound clients that stop reading.
+  const deadline = setTimeout(() => client.destroy(), 5000); deadline.unref();
+  client.once('close', () => clearTimeout(deadline));
   client.end(wire);
+  client.destroySoon();
   } catch { client.destroy(); }
 }
 

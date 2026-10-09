@@ -9,6 +9,13 @@ import { start } from '../plugin/index.mjs';
 import { exchange } from '../lib/transport.mjs';
 import { fixture, sidA, sidB } from './helpers.mjs';
 import { register } from '../lib/config.mjs';
+import net from 'node:net';
+import { once } from 'node:events';
+import { randomBytes } from 'node:crypto';
+import { socketPath } from '../lib/config.mjs';
+import { channelKey, serverChannel } from '../lib/secure-channel.mjs';
+import { respond } from '../plugin/index.mjs';
+import { safeError } from '../lib/errors.mjs';
 
 const cli = fileURLToPath(new URL('../bin/bridge.mjs', import.meta.url));
 test('real socket: private permissions, duplicate listener refusal and sanitized errors', { skip: process.platform === 'win32' }, async t => {
@@ -25,10 +32,12 @@ test('real socket: private permissions, duplicate listener refusal and sanitized
 test('busy session is isolated; another project still reads, CLI roundtrip targets selected session', async t => {
   const f = fixture(); t.after(f.cleanup);
   const stop = await start(f.ctx, f.base); t.after(stop);
-  let release; const held = new Promise(resolve => { release = resolve; });
-  f.ctx.sessionController.prompt = async () => { await held; return { accepted: true }; };
+  let release, entered; const held = new Promise(resolve => { release = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  t.after(() => release());
+  f.ctx.sessionController.prompt = async () => { entered(); await held; return { accepted: true }; };
   const pending = exchange(f.base, f.req());
-  await new Promise(resolve => setTimeout(resolve, 40));
+  await Promise.race([started, pending.then(() => { throw Error('send settled before Host entry'); })]);
   assert.equal((await exchange(f.base, f.req('status'))).error, 'session_busy');
   assert.equal((await exchange(f.base, f.req('status', 'beta', sidB))).ok, true);
   release(); assert.equal((await pending).ok, true);
@@ -76,4 +85,55 @@ test('result works with a Host context that rejects undeclared service propertie
   const stop = await start(ctx, f.base); t.after(stop);
   const result = await exchange(f.base, f.req('result'));
   assert.equal(result.ok, true); assert.equal(result.value.latestTurn, null);
+});
+
+test('framing errors and identity mismatch are distinct on plain and authenticated transports', async t => {
+  const f = fixture(); t.after(f.cleanup); const req = f.req('status');
+  const keys = process.platform === 'win32' ? [channelKey(f.base, true)] : [null, randomBytes(32)];
+  for (const key of keys) for (const kind of ['empty', 'truncated', 'newline_missing', 'malformed', 'utf8', 'identity']) {
+    const server = net.createServer(client => {
+      const channel = key ? serverChannel(key) : null;
+      if (channel) client.write(JSON.stringify(channel.hello) + '\n');
+      client.once('data', () => {
+        const value = { ok: true, requestId: 'wrong-id', project: req.project,
+          value: { membershipVerified: true, sessionId: req.session } };
+        const packet = JSON.stringify(channel ? channel.seal(value, 'response') : value);
+        const wire = { empty: '', truncated: '{"ok":', newline_missing: packet,
+          malformed: 'bad\n', utf8: Buffer.from([255, 10]), identity: packet + '\n' }[kind];
+        client.end(wire);
+      });
+    });
+    server.listen(socketPath(f.base)); await once(server, 'listening');
+    if (process.platform !== 'win32') fs.chmodSync(socketPath(f.base), 0o600);
+    try {
+      const expected = ['empty', 'truncated', 'newline_missing'].includes(kind) ? 'incomplete_response' :
+        kind === 'identity' ? 'response_identity_mismatch' : 'invalid_response';
+      await assert.rejects(exchange(f.base, req, { channelKey: key }), e => e.message === expected && safeError(e) === expected);
+    } finally { await new Promise(resolve => server.close(resolve)); }
+  }
+});
+
+test('unsafe socket permissions fail before a connection is made', { skip: process.platform === 'win32' }, async t => {
+  const f = fixture(); t.after(f.cleanup); let connected = false;
+  const server = net.createServer(client => { connected = true; client.destroy(); });
+  server.listen(socketPath(f.base)); await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  fs.chmodSync(socketPath(f.base), 0o666);
+  assert.throws(() => exchange(f.base, f.req('status')), /unsafe_socket/);
+  assert.equal(connected, false);
+});
+
+test('respond drains a bounded large response before closing under backpressure', async t => {
+  const payload = { ok: true, value: 'x'.repeat(63000) };
+  const expected = JSON.stringify(payload) + '\n';
+  const server = net.createServer(client => { client.on('error', () => {}); respond(client, payload); });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const client = net.createConnection(server.address().port, '127.0.0.1');
+  t.after(() => client.destroy());
+  const chunks = []; client.on('data', chunk => chunks.push(chunk));
+  client.pause(); const ended = once(client, 'end');
+  await new Promise(resolve => setTimeout(resolve, 50)); client.resume();
+  await ended;
+  assert.equal(Buffer.concat(chunks).toString(), expected);
 });

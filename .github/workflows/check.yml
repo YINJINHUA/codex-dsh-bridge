@@ -20,7 +20,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm run check:release
       - run: npm test
-      - run: npm pack --dry-run --ignore-scripts --json
+      - run: npm run check:pack
 
   windows_shards:
     name: Windows tests (${{ matrix.shard }}/3)
@@ -52,7 +52,7 @@ jobs:
           Write-Output 'Windows PowerShell and ACL APIs initialized; runtime checks retain their 10-second deadline.'
       - run: npm run check:release
       - run: npm test -- --shard=${{ matrix.shard }}/3
-      - run: npm pack --dry-run --ignore-scripts --json
+      - run: npm run check:pack
 
   windows:
     # Preserve the original check name for repositories requiring that status.

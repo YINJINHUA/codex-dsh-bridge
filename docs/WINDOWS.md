@@ -32,7 +32,7 @@ Windows 支持正常启动 DSH、启用插件、项目登记、消息投递与�
 
 静态PowerShell源码通过stdin JSON接收路径，不拼命令、不改全局执行策略。文件同步后用MoveFileEx WRITE_THROUGH原子发布，首次记录禁止覆盖。Windows慢检查运行在Worker，DSH会话接口仍由原Host调用。
 
-0.4.0候选将一次JSON新建/替换的目录准备、独占私有临时文件创建、Flush和原子发布合并到一次辅助程序调用。属主与DACL通过系统.NET的 [File.GetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.getaccesscontrol?view=netframework-4.8.1) / [Directory.GetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.directory.getaccesscontrol?view=netframework-4.8.1) 每次重新读取，保留原有规则判定；不缓存权限、不安装额外运行时、不放宽ACL。失败只清理本次成功独占创建的临时文件，原目标通过原子替换保持完整。
+自0.4.0起，将一次JSON新建/替换的目录准备、独占私有临时文件创建、Flush和原子发布合并到一次辅助程序调用。属主与DACL通过系统.NET的 [File.GetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.file.getaccesscontrol?view=netframework-4.8.1) / [Directory.GetAccessControl](https://learn.microsoft.com/en-us/dotnet/api/system.io.directory.getaccesscontrol?view=netframework-4.8.1) 每次重新读取，保留原有规则判定；不缓存权限、不安装额外运行时、不放宽ACL。失败只清理本次成功独占创建的临时文件，原目标通过原子替换保持完整。
 
 默认时限如下（开发测试可显式设置较短时限）：
 
@@ -60,7 +60,11 @@ node scripts/doctor.mjs 'C:\path-to-trusted-tools\codex.exe'
 
 开发验证：`npm test`、`npm run check:release`。测试使用合成Host/CLI，无真实消息；用系统.NET编译合成exe，不下载工具。测试入口原子创建私有TEMP并只清理该临时目录；如需指定父目录，设置本次测试的`BRIDGE_TEST_PARENT`到受保护本机目录，不指向正式桥状态。
 
-当前包验证结果见 [验证记录](SECURITY-REVIEW.md)。此前三级实测已实际回信，但创建调用仍返回结果不明，未宣布全链通过。未知创建须保留原请求编号和已知ID核查，不更换编号重建。真实断电耐久与全部系统策略组合未验证。
+0.4.1 将单机测试文件并发限制为2，减少多个 PowerShell 安全辅助进程争用；三个云端分组仍在独立runner并行，测试、超时和ACL检查不减少。实际打包清单另用 `npm run check:pack` 验证。
+
+若桥状态意外出现沙箱组等额外 Allow ACE，`unsafe_file` 是预期保护。不要加入白名单或给沙箱开放状态目录。先结束使用桥的任务并退出DSH，由管理员核明变更来源，只恢复桥状态本身原有私有ACL，保留登记、创建意图和回执；若 channel-key.json 曾可能被额外主体读取，恢复ACL后须安全轮换该桥通道密钥，不能仅改ACL便宣称隔离已恢复。不要输出/备份旧密钥到工作区；账号凭据、项目和系统ACL不在恢复范围内。重开后先核只读连接，不重试结果未知的原请求。插件和 doctor 不自动修权限或清空状态。
+
+当前包验证结果见 [验证记录](SECURITY-REVIEW.md)。0.4.0 的 R7 三级实测创建与逐级回信通过；此前 R6 曾创建结果不明，不能据一次成功抹去历史风险。未知创建须保留原请求编号和已知ID核查，不更换编号重建。真实断电耐久与全部系统策略组合未验证。
 
 doctor 的 `scope: local_permissions`、`hostConnectivity: not_checked` 表示只核本机权限；`ok: true`不代表DSH、桥端点或Codex在线，也不检查POSIX端点长度。请使用 `npm test` 或 `node scripts/test.mjs`；直接 `node --test` 绕过私有TEMP准备，在系统TEMP权限不合格时可能失败。`BRIDGE_TEST_PARENT` 优先选择已存在且ACL合格的父目录；缺失祖先可能被辅助程序创建，测试结束不会连带清理这些祖先。
 

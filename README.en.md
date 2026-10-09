@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 **Exchange local messages between Codex and DeepSeek Harness (DSH).** Register a project to message its conversations, inspect status, read DSH replies and explicitly create conversations.
 
-Version 0.4.0 · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
+Version 0.4.1 · MIT · Node.js 22+ · macOS tested / Windows preview / Linux not live-tested
 
 A community plugin, not an official product. It connects to the DSH Host (the desktop app’s background process) through local sockets or encrypted Windows named pipes, and to Codex through its official CLI. No UI automation, cloud relay or separate bridge API key. Both applications must run on the same computer; this plugin does not bridge remote machines.
 
@@ -28,7 +28,7 @@ From 0.3.8, the package and GitHub repository are named `codex-dsh-project-bridg
 
 ### Option 1: Enter the npm package name in DSH (recommended)
 
-This method is supported by DSH. Live installation under this plugin's new package name and upgrading from the old package have not yet been verified; see [validation](docs/SECURITY-REVIEW.md).
+This entry point is supported by DSH. See [validation](docs/SECURITY-REVIEW.md) for version-specific installation and live-test coverage; a prepared version is available only after npm publication.
 
 1. Open DSH Desktop → **Plugins → Add plugin**.
 2. Enter:
@@ -39,7 +39,7 @@ This method is supported by DSH. Live installation under this plugin's new packa
 
 3. Install, check the displayed package name and actual version, then choose **Enable now**. Restart if the app requests it.
 
-Enter only the package name, without `npm install` or a shell command; no manual download is needed. A bare name uses the registry's default tag (normally `latest`). To pin a version, enter `codex-dsh-project-bridge@0.4.0`. Check that npm publication has finished; a GitHub Release alone does not mean its npm workflow has succeeded. If a newly published version is missing, check with the **official npm registry** (`https://registry.npmjs.org/`) in the install-source selector; mirrors may lag.
+Enter only the package name, without `npm install` or a shell command; no manual download is needed. A bare name uses the registry's default tag (normally `latest`). To pin a version, enter `codex-dsh-project-bridge@0.4.1`. Check that npm publication has finished; a GitHub Release alone does not mean its npm workflow has succeeded. If a newly published version is missing, check with the **official npm registry** (`https://registry.npmjs.org/`) in the install-source selector; mirrors may lag.
 
 Package names and versions are supported by the [official DSH plugin manager](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-plugin-manager/README.md). Check the installed version; a successful download alone does not prove the plugin loaded.
 
@@ -52,26 +52,26 @@ Obtain a fixed-version `.tgz` from a trusted release source, or [build it](docs/
 Use the `dsh` command provided by DSH Desktop; install or repair it through the app's **Manage dsh command…** menu. Launch Desktop at least once to initialize its profile, finish related tasks and **fully quit the app** (closing its window is not enough), then run:
 
 ```sh
-dsh plugin --profile desktop add codex-dsh-project-bridge@0.4.0 --ignore-scripts
+dsh plugin --profile desktop add codex-dsh-project-bridge@0.4.1 --ignore-scripts
 ```
 
 For an existing trusted local candidate archive:
 
 ```sh
-dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.4.0.tgz --offline --ignore-scripts
+dsh plugin --profile desktop add /absolute/path/codex-dsh-project-bridge-0.4.1.tgz --ignore-scripts
 ```
 
-Do not use `--offline` for a registry download. A separately npm-installed `dsh` cannot manage the Desktop profile; see the [official desktop documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/README.md). `npm install -g codex-dsh-project-bridge` also does not register a desktop plugin.
+Even a local archive may require online dependency metadata for other plugins in the desktop profile. Add `--offline` only when all required packages and metadata are cached; on missing offline metadata, check the registry and use normal online installation. Do not use `--offline` for a registry download. A separately npm-installed `dsh` cannot manage the Desktop profile; see the [official desktop documentation](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/desktop/README.md). `npm install -g codex-dsh-project-bridge` also does not register a desktop plugin.
 
 To download a published archive first, run in your download directory:
 
 ```sh
-npm pack codex-dsh-project-bridge@0.4.0 --registry=https://registry.npmjs.org/ --ignore-scripts
+npm pack codex-dsh-project-bridge@0.4.1 --registry=https://registry.npmjs.org/ --ignore-scripts
 ```
 
 Then install the `.tgz` using Option 2. `next` is a preview tag, separate from `latest`; publishing to `next` does not automatically change the default for a bare package name. Ordinary pushes do not publish npm packages. Publishing a GitHub prerelease targets `next`; a formal Release targets `latest`, after full CI passes for that exact commit. See [release instructions](docs/RELEASING.md).
 
-GUI installation does not imply the command's offline and script restrictions. Default installation locations:
+GUI installation does not imply the command's `--ignore-scripts` restriction. Default installation locations:
 
 | Platform | Plugin directory |
 | --- | --- |
@@ -79,6 +79,12 @@ GUI installation does not imply the command's offline and script restrictions. D
 | Windows | `%USERPROFILE%\.dsh\profiles\desktop\node_modules\codex-dsh-project-bridge` |
 
 For upgrades, [remove the previous package](docs/UNINSTALL.md) while preserving registrations and delivery records. See [startup and data locations](docs/STARTUP.md).
+
+### Companion: DSH peer messaging
+
+For the 3/4/5 handoffs below, separately install and enable **`dsh-xsession`** in DSH's Add plugin dialog (compatibility baseline: `0.1.2`). [Project and documentation](https://github.com/YINJINHUA/dsh-xsession). It exposes `xsession_*` tools inside DSH so workers can retain the app defaults. This bridge handles Codex ↔ DSH and creation; neither package changes the other's permissions.
+
+Peers must share **one DSH Host and the same canonical workspace root**. Parent/child directories and separate roots under one bridge registration do not qualify. For cross-project conversations, choose and verify another suitable plugin; this pairing does not provide that routing. See the [companion guide](docs/XSESSION.en.md).
 
 ## Configure and send your first message
 
@@ -121,14 +127,14 @@ node bin/bridge.mjs result --project my-app --to dsh --session DSH_SESSION_ID
 
 **Review:** 1 writes review instructions → 2 → the same 3 creates 5 → 5 writes a report → 3 → 2 → 1 makes the final assessment.
 
-Use available, authorized Codex-native messages for 1↔2 and this bridge for 2↔3. **Internal messages and worker callbacks among DSH conversations 3, 4 and 5 require a separate compatible messaging/subagent plugin; this bridge does not include it.** Without that plugin, 3 can perform bounded checks and collect reports, but an ended coordinator will not wake automatically.
+Use available, authorized Codex-native messages for 1↔2 and this bridge for 2↔3. **Use the separately installed `dsh-xsession` for messages and callbacks among DSH conversations 3, 4 and 5.** Use actual DSH session IDs in the same workspace. Without it, 3 can collect reports with bounded checks; this bridge does not automatically wake an ended coordinator.
 
 Use `--dsh-permission inherit` (follow DSH defaults) when creating 4/5; full access for 3 requires explicit local configuration. See the [workflow guide](docs/WORKFLOW.en.md) for commands, compatibility and permissions. Simple tasks need fewer roles; cost depends on models and calls.
 
 ## Key limitations
 
 - **Permissions and security:** full access requires explicit authorization; project registration does not isolate malicious same-user processes. See [permissions](docs/PERMISSIONS.md).
-- **New Codex conversations:** prefer creation through an existing Codex conversation’s desktop tools. CLI creation does not guarantee sidebar visibility, and Windows has unresolved issues. See [platform validation](docs/SECURITY-REVIEW.md).
+- **New Codex conversations:** prefer creation through an existing Codex conversation’s desktop tools. CLI creation does not guarantee sidebar visibility, and one successful Windows run is not a stability guarantee for every environment. See [platform validation](docs/SECURITY-REVIEW.md).
 - **Unknown outcomes:** inspect the destination before doing anything else; do not resend or recreate under a new ID. Agent messages are not fresh user authorization, and waking an agent uses its model allowance. See [recovery](docs/CLI.en.md#errors-and-recovery).
 
 ## More documentation
@@ -141,4 +147,4 @@ Use `--dsh-permission inherit` (follow DSH defaults) when creating 4/5; full acc
 | Permissions, transport and platform limits | [Permissions](docs/PERMISSIONS.md) · [Architecture](docs/ARCHITECTURE.md) · [Windows](docs/WINDOWS.md) |
 | Validation and releases | [Validation](docs/SECURITY-REVIEW.md) · [Packaging](docs/RELEASING.md) · [Changelog](CHANGELOG.md) |
 
-Some detailed guides are in Chinese. Development checks: `npm test`, `npm run check:release`. See [SECURITY.md](SECURITY.md) and the [MIT license](LICENSE).
+Some detailed guides are in Chinese. Development checks: `npm test`, `npm run check:release`, `npm run check:pack`. See [SECURITY.md](SECURITY.md) and the [MIT license](LICENSE).

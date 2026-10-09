@@ -96,6 +96,10 @@ DSH 最近结果可能是上轮，必须核回执的 `hostRequestId` 是否在 `
 - `state_file_missing` / `state_file_exists`：Windows状态文件缺失或独占创建发现已存在；底层保留ENOENT/EEXIST语义，既有去重与默认配置行为保持。
 - `ENOENT`：其他必要路径不存在，例如登记根掉线；按当前操作核对应路径，不能一概当作桥未运行。
 - `request_timeout_delivery_unknown`：Host请求超时，操作可能仍在进行；先核交付，不换编号重试。
+- `incomplete_response` / `invalid_response`：连接关闭前未收到完整换行帧，或完整帧的编码/JSON/结构不合法。`response_identity_mismatch` 表示回包项目、请求或目标不匹配。均不证明发送/创建没有执行，保留原编号核查，不自动重发。
+- `authentication_failed` / `invalid_channel_key`：通道认证失败或通信材料无效；核Host与CLI使用同一可信私有状态，不关闭认证或盲目替换密钥。
+- `transport_timeout_delivery_unknown`：传输层期限已过，交付仍不明；保留原编号核目标，不重复投递。
+- `response_too_large`：响应超过协议大小上限，不通过移除限制解决。
 - `unsafe_socket` / `socket_path_too_long`：POSIX端点类型/权限不符或路径过长；doctor不检查端点可连接性或长度，不删端点绕过门禁。
 - `session_not_found` / `not_accepted`：会话未找到或Host未确认接受；创建阶段出错仍须保留创建记录核查。
 - 异常退出留下 socket 时，先确认原 Host 已退出且端点不可连接，再人工处理该通用桥端点。
@@ -109,3 +113,5 @@ DSH 最近结果可能是上轮，必须核回执的 `hostRequestId` 是否在 `
 - `codex_invalid_response` / `codex_response_too_large`：已配置 CLI 的响应格式不符或超限；核对版本及可信安装。
 
 POSIX发布未结束会返回忙状态，不能清锁、换编号绕过去重。启动失败先运行已安装目录下的doctor；它只检查本机权限，不确认桥已在线，不修权限，也不重发消息。Windows纯CLI创建可能已有会话但返回结果不明，请保留原ID核查。
+
+Codex `queue` 入队不保证未加载的桌面对话立即开始处理。先使用已有、已准备接收的对话；若目标尚未处理，可通过桌面或已授权原生工具打开/唤醒原目标，再核原消息实际入站，不用新的请求号重发。原生准备消息本身不是桥收信证据。

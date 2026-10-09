@@ -11,10 +11,11 @@ export const requiredJobs = [
 
 export function releasePlan(event, manifest, sha) {
   assert.equal(event.repository?.full_name, repository, 'unexpected repository');
-  assert.equal(event.action, 'published', 'only published Releases may publish');
+  assert.ok(['published', 'released'].includes(event.action), 'only publication or stable release events may publish');
   const release = event.release;
   assert.equal(release?.draft, false, 'draft Release');
   assert.equal(typeof release.prerelease, 'boolean', 'missing Release type');
+  if (event.action === 'released') assert.equal(release.prerelease, false, 'released event requires a formal Release');
   assert.ok(Number.isSafeInteger(release.id) && release.id > 0, 'invalid Release id');
   assert.match(sha, /^[a-f0-9]{40}$/, 'invalid source commit');
   assert.equal(manifest.name, packageName, 'unexpected package');
@@ -45,7 +46,8 @@ export function requireGreenChecks(runs, jobs, sha, defaultBranch) {
 
 export function publishAction(metadata, plan, integrity) {
   const current = metadata['dist-tags']?.latest;
-  if (plan.channel === 'latest' && /^\d+\.\d+\.\d+$/.test(current || '')) {
+  if (plan.channel === 'latest' && current !== undefined) {
+    assert.match(current, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, 'cannot safely compare current latest');
     const a = plan.version.split('.').map(BigInt), b = current.split('.').map(BigInt);
     const different = a.findIndex((value, index) => value !== b[index]);
     assert.ok(different < 0 || a[different] > b[different], 'refusing to move latest backwards');

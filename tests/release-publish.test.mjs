@@ -14,6 +14,8 @@ function jobs() { return requiredJobs.map(name => ({ name, run_id: 7, status: 'c
 test('Release type chooses next or latest; draft, tag mismatch and unstable formal versions fail', () => {
   assert.equal(releasePlan(event(true), manifest, sha).channel, 'next');
   assert.equal(releasePlan(event(), manifest, sha).channel, 'latest');
+  assert.equal(releasePlan({ ...event(), action: 'released' }, manifest, sha).channel, 'latest');
+  assert.throws(() => releasePlan({ ...event(true), action: 'released' }, manifest, sha));
   for (const value of [{ ...event(), action: 'edited' }, { ...event(), repository: { full_name: 'fork/repo' } },
     { ...event(), release: { ...event().release, draft: true } },
     { ...event(), release: { ...event().release, tag_name: 'v0.4.1' } }]) {
@@ -51,4 +53,8 @@ test('a retry or next-to-latest promotion requires exactly the published package
   assert.throws(() => publishAction(metadata, plan, 'sha512-different'));
   metadata['dist-tags'].latest = '0.5.0';
   assert.throws(() => publishAction(metadata, plan, 'sha512-same'), /backwards/);
+  for (const current of ['garbage', '0.5.0-rc.1', '01.0.0']) {
+    metadata['dist-tags'].latest = current;
+    assert.throws(() => publishAction(metadata, plan, 'sha512-same'), /compare/);
+  }
 });
